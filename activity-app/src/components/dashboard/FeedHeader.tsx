@@ -1,0 +1,100 @@
+"use client";
+
+import React from 'react';
+import { Sparkles } from 'lucide-react';
+
+interface FeedHeaderProps {
+  selectedCategory?: string;
+  onSelectCategory?: (category: string) => void;
+  selectedFilterType?: 'all' | 'indoor' | 'outdoor';
+  onSelectFilterType?: (type: 'all' | 'indoor' | 'outdoor') => void;
+  showingCount?: number;
+  totalCount?: number;
+}
+
+const CATEGORIES = [
+  'All',
+  'Sports',
+  'Outdoor Adventures',
+  'Social Meetups',
+  'Food & Drinks',
+  'Study & Work',
+];
+
+export function FeedHeader({
+  selectedCategory = 'All',
+  onSelectCategory,
+  selectedFilterType = 'all',
+  onSelectFilterType,
+  showingCount = 1,
+  totalCount = 5,
+}: FeedHeaderProps) {
+  return (
+    <div className="space-y-6">
+      {/* 1. Hero Banner */}
+      <div className="relative rounded-3xl bg-gradient-to-br from-[#FFF7ED] via-[#FFF3D6] to-[#FFEEDB] p-6 sm:p-8 border border-[#FED7AA]/50 overflow-hidden shadow-2xs">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-orange-200/60 text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-4 shadow-2xs">
+          <Sparkles className="w-3 h-3 text-orange-500" />
+          <span>What are you up to today?</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight leading-tight max-w-lg">
+          Find your next plan. <br />
+          Join real people in your neighborhood.
+        </h1>
+
+        <p className="mt-2.5 text-xs sm:text-sm text-neutral-600 max-w-xl leading-relaxed">
+          From quick badminton doubles to weekend morning coffee sprints—discover curated local social plans or post your own.
+        </p>
+      </div>
+
+      {/* 2. Top Scrollable Category Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {CATEGORIES.map((category) => {
+          const isActive = selectedCategory === category;
+          return (
+            <button
+              key={category}
+              type="button"
+              onClick={() => onSelectCategory?.(category)}
+              className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-white text-orange-600 border border-orange-200 shadow-2xs'
+                  : 'bg-white/80 text-neutral-600 border border-neutral-200/80 hover:bg-neutral-50 hover:text-neutral-900'
+              }`}
+            >
+              {category}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. Sub-filter Pills (All / Indoor / Outdoor) & Count */}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center gap-2">
+          {(['all', 'indoor', 'outdoor'] as const).map((type) => {
+            const isActive = selectedFilterType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onSelectFilterType?.(type)}
+                className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-neutral-900 text-white shadow-2xs'
+                    : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                {type}
+              </button>
+            );
+          })}
+        </div>
+
+        <span className="text-xs text-neutral-400">
+          Showing <strong className="text-neutral-700 font-semibold">{showingCount}</strong> of {totalCount} plans
+        </span>
+      </div>
+    </div>
+  );
+}
