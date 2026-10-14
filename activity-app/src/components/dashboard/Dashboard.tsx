@@ -1,57 +1,205 @@
 "use client";
 
-import { useState } from 'react';
-import { useOpenHostPlanModal } from './AppShell';
-import { SidebarRight } from './SidebarRight';
-import { FeedHeader } from './FeedHeader';
-import { ActivityCard, ActivityPlan } from '../activity/ActivityCard';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ApiError } from '@/service/AuthService';
+import {
+  getActivities,
+  getActivityById,
+  getMyJoinedActivities,
+  joinActivity,
+  leaveActivity,
+  toggleActivityBookmark,
+  toggleActivityLike,
+  type Activity,
+  type ActivityFilters,
+} from '@/service/activityService';
+import { getCurrentUserBookmarks } from '@/service/userService';
+import { useAuth } from '../auth/AuthProvider';
+import { ActivityCard } from '../activity/ActivityCard';
 import { ActivityDetailModal, type ActivityDetailData } from '../activity/ActivityDetailModal';
-
-const SAMPLE_PLANS: ActivityPlan[] = [
-  {
-    id: 'plan-1',
-    title: 'Catan & Secret Hitler Strategy Night',
-    category: 'Gaming',
-    environment: 'Indoor',
-    location: 'Indiranagar, 100ft Road',
-    date: 'Saturday, 18 Oct',
-    time: '6:30 PM',
-    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=800&auto=format&fit=crop&q=80',
-    hostName: 'Kabir',
-    hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    spotsLeft: 2,
-    totalSpots: 5,
-  },
-  {
-    id: 'plan-2',
-    title: 'Morning Badminton Doubles Rally',
-    category: 'Sports',
-    environment: 'Indoor',
-    location: 'Play Arena, Sarjapur',
-    date: 'Sunday, 19 Oct',
-    time: '7:00 AM',
-    imageUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80',
-    hostName: 'Rohan',
-    hostAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
-    spotsLeft: 1,
-    totalSpots: 4,
-  },
-];
+import { toActivityDetail, toActivityPlan } from '../activity/activityMappers';
+import { useDashboardContext, useOpenHostPlanModal } from './AppShell';
+import { FeedHeader } from './FeedHeader';
+import { SidebarRight } from './SidebarRight';
 
 export default function Dashboard() {
   const openHostPlanModal = useOpenHostPlanModal();
+  const { categories, currentUserId, searchQuery } = useDashboardContext();
+  const { notify } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedFilterType, setSelectedFilterType] = useState<'all' | 'indoor' | 'outdoor'>('all');
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [selectedActivity, setSelectedActivity] = useState<ActivityDetailData | null>(null);
-  const filteredPlans = SAMPLE_PLANS.filter((plan) => {
-    const matchesCategory =
-      selectedCategory === 'All' ||
-      plan.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesEnv =
-      selectedFilterType === 'all' ||
-      plan.environment.toLowerCase() === selectedFilterType.toLowerCase();
-    return matchesCategory && matchesEnv;
-  });
+  const [loading, setLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
+
+  const categoryId = categories.find((category) => category.name === selectedCategory)?.id;
+  const showApiError = useCallback((error: unknown, fallback: string) => {
+    if (!(error instanceof ApiError && error.status === 401)) {
+      notify(error instanceof Error ? error.message : fallback, 'error');
+    }
+  }, [notify]);
+
+  const refreshActivities = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    const filters: ActivityFilters = {
+      search: searchQuery.trim() || undefined,
+      category_id: categoryId,
+      environment: selectedFilterType === 'all' ? undefined : selectedFilterType,
+      limit: 100,
+    };
+    try {
+      const [results, joined, bookmarks] = await Promise.all([
+        getActivities(filters),
+        getMyJoinedActivities(),
+        getCurrentUserBookmarks(),
+      ]);
+      const bookmarkedById = new Map(bookmarks.map((activity) => [activity.id, activity]));
+      setActivities(results.map((activity) => {
+        const bookmarked = bookmarkedById.get(activity.id);
+        return {
+          ...activity,
+          is_liked: activity.is_liked ?? bookmarked?.is_liked,
+          is_bookmarked: activity.is_bookmarked ?? bookmarked?.is_bookmarked,
+        };
+      }));
+      setJoinedIds(new Set(joined.map((activity) => activity.id)));
+      setBookmarkedIds(new Set(bookmarks.map((activity) => activity.id)));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load activities.');
+      showApiError(error, 'Unable to load activities.');
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryId, searchQuery, selectedFilterType, showApiError]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refreshActivities(), 250);
+    const handleActivitiesUpdated = () => void refreshActivities();
+    window.addEventListener('app:activities-updated', handleActivitiesUpdated);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('app:activities-updated', handleActivitiesUpdated);
+    };
+  }, [refreshActivities]);
+
+  const plans = useMemo(
+    () => activities.map((activity) => ({
+      ...toActivityPlan(activity),
+      isJoined: joinedIds.has(activity.id),
+      isJoining: joiningId === activity.id,
+      canJoin: currentUserId === null ? undefined : activity.host_id !== currentUserId,
+    })),
+    [activities, currentUserId, joinedIds, joiningId],
+  );
+
+  const updateActionActivity = (updated: Activity) => {
+    setActivities((current) => current.map((activity) => (
+      activity.id === updated.id ? updated : activity
+    )));
+  };
+
+  const handleJoin = async (activityId: string) => {
+    const isJoined = joinedIds.has(activityId);
+    setJoiningId(activityId);
+    try {
+      const updated = isJoined
+        ? await leaveActivity(activityId)
+        : await joinActivity(activityId);
+      updateActionActivity(updated);
+      setJoinedIds((current) => {
+        const next = new Set(current);
+        if (isJoined) next.delete(activityId);
+        else next.add(activityId);
+        return next;
+      });
+      notify(isJoined ? 'You left this activity.' : 'You joined this activity.', 'success');
+      window.dispatchEvent(new Event('app:dashboard-refresh'));
+    } catch (error) {
+      showApiError(error, 'Unable to update activity membership.');
+    } finally {
+      setJoiningId(null);
+    }
+  };
+
+  const openDetails = async (activity: Activity) => {
+    const state = {
+      isJoined: joinedIds.has(activity.id),
+      isBookmarked: bookmarkedIds.has(activity.id),
+      isLiked: activity.is_liked ?? false,
+      canJoin: currentUserId === null ? undefined : activity.host_id !== currentUserId,
+    };
+    setSelectedActivity(toActivityDetail(activity, state));
+    try {
+      const details = await getActivityById(activity.id);
+      setSelectedActivity((current) => current?.id === details.id
+        ? toActivityDetail(details, state)
+        : current);
+    } catch (error) {
+      showApiError(error, 'Unable to load activity details.');
+    }
+  };
+
+  const handleJoinToggle = async (isJoined: boolean) => {
+    if (!selectedActivity) return false;
+    const activityId = selectedActivity.id;
+    const updated = isJoined
+      ? await joinActivity(activityId)
+      : await leaveActivity(activityId);
+    updateActionActivity(updated);
+    setJoinedIds((current) => {
+      const next = new Set(current);
+      if (isJoined) next.add(activityId);
+      else next.delete(activityId);
+      return next;
+    });
+    setSelectedActivity((current) => current
+      ? toActivityDetail(updated, {
+        isJoined,
+        isBookmarked: current.isBookmarked ?? false,
+        isLiked: current.isLiked ?? false,
+        canJoin: current.canJoin,
+      })
+      : current);
+    window.dispatchEvent(new Event('app:dashboard-refresh'));
+    return isJoined;
+  };
+
+  const handleBookmarkToggle = async () => {
+    if (!selectedActivity) return;
+    const activityId = selectedActivity.id;
+    const state = await toggleActivityBookmark(activityId);
+    setBookmarkedIds((current) => {
+      const next = new Set(current);
+      if (state.is_bookmarked) next.add(activityId);
+      else next.delete(activityId);
+      return next;
+    });
+    setActivities((current) => current.map((activity) => activity.id === activityId
+      ? { ...activity, is_liked: state.is_liked, is_bookmarked: state.is_bookmarked, likes_count: state.likes_count }
+      : activity));
+    setSelectedActivity((current) => current
+      ? { ...current, isBookmarked: state.is_bookmarked, isLiked: state.is_liked }
+      : current);
+    return state.is_bookmarked;
+  };
+
+  const handleLikeToggle = async () => {
+    if (!selectedActivity) return false;
+    const activityId = selectedActivity.id;
+    const state = await toggleActivityLike(activityId);
+    setActivities((current) => current.map((activity) => activity.id === activityId
+      ? { ...activity, is_liked: state.is_liked, is_bookmarked: state.is_bookmarked, likes_count: state.likes_count }
+      : activity));
+    setSelectedActivity((current) => current
+      ? { ...current, isLiked: state.is_liked, isBookmarked: state.is_bookmarked }
+      : current);
+    return state.is_liked;
+  };
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
@@ -61,45 +209,39 @@ export default function Dashboard() {
           onSelectCategory={setSelectedCategory}
           selectedFilterType={selectedFilterType}
           onSelectFilterType={setSelectedFilterType}
-          showingCount={filteredPlans.length}
-          totalCount={SAMPLE_PLANS.length}
+          showingCount={plans.length}
+          totalCount={plans.length}
+          categories={categories}
         />
 
         <div className="space-y-5">
-          {filteredPlans.length > 0 ? (
-            filteredPlans.map((plan) => (
+          {loading ? (
+            <div className="rounded-3xl border border-neutral-200/80 bg-white p-12 text-center" role="status">
+              <p className="text-sm font-semibold text-neutral-500">Loading activities…</p>
+            </div>
+          ) : loadError ? (
+            <div className="rounded-3xl border border-neutral-200/80 bg-white p-12 text-center">
+              <p className="text-sm font-semibold text-neutral-500">{loadError}</p>
+              <button type="button" onClick={() => void refreshActivities()} className="mt-3 text-sm font-bold text-orange-600">
+                Try again
+              </button>
+            </div>
+          ) : plans.length > 0 ? (
+            plans.map((plan) => (
               <ActivityCard
                 key={plan.id}
                 plan={plan}
-                onJoin={(id) => alert(`Joined plan ID: ${id}`)}
-                onCardClick={(clickedPlan) => setSelectedActivity({
-                  id: clickedPlan.id,
-                  title: clickedPlan.title,
-                  category: clickedPlan.category,
-                  environment: clickedPlan.environment,
-                  coverImage: clickedPlan.imageUrl,
-                  date: clickedPlan.date,
-                  time: clickedPlan.time,
-                  totalGroupSize: clickedPlan.totalSpots,
-                  openSpots: clickedPlan.spotsLeft,
-                  meetingSpot: clickedPlan.location,
-                  description: clickedPlan.description ?? 'More details about this activity will be shared by the host.',
-                  host: {
-                    name: clickedPlan.hostName,
-                    location: clickedPlan.location,
-                    avatarUrl: clickedPlan.hostAvatar,
-                  },
-                  crew: [],
-                  isLiked: false,
-                  isBookmarked: false,
-                  isJoined: false,
-                })}
+                onJoin={(id) => void handleJoin(id)}
+                onCardClick={() => {
+                  const activity = activities.find((item) => item.id === plan.id);
+                  if (activity) void openDetails(activity);
+                }}
               />
             ))
           ) : (
             <div className="rounded-3xl border border-neutral-200/80 bg-white p-12 text-center">
               <p className="text-sm font-semibold text-neutral-500">
-                No plans found for this filter.
+                No activities found for this filter.
               </p>
             </div>
           )}
@@ -107,13 +249,16 @@ export default function Dashboard() {
       </section>
 
       <div className="xl:col-span-1">
-        <SidebarRight onCreateInstantPlan={openHostPlanModal} />
+        <SidebarRight circles={[]} onCreateInstantPlan={openHostPlanModal} />
       </div>
       <ActivityDetailModal
         key={selectedActivity?.id ?? 'closed'}
         isOpen={selectedActivity !== null}
         activity={selectedActivity}
         onClose={() => setSelectedActivity(null)}
+        onLikeChange={handleLikeToggle}
+        onBookmarkChange={handleBookmarkToggle}
+        onJoinToggle={handleJoinToggle}
       />
     </div>
   );

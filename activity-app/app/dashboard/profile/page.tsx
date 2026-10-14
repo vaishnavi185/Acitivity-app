@@ -1,5 +1,6 @@
 import { ProfileSavedView } from "@/src/components/profile/ProfileSavedView";
 
+export const instant = false;
 
 export const metadata = {
   title: 'Profile & Saved | GatherUp',

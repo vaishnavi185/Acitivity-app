@@ -11,17 +11,17 @@ import {
 } from 'lucide-react';
 
 interface SidebarLeftProps {
-  hostedCount?: number;
-  joinedCount?: number;
-  cityRankPercentile?: string;
+  hostedCount?: number | string;
+  joinedCount?: number | string;
+  upcomingCount?: number | string;
   badgeTitle?: string;
 }
 
 export function SidebarLeft({
-  hostedCount = 1,
-  joinedCount = 1,
-  cityRankPercentile = 'Top 15%',
-  badgeTitle = 'Socialite',
+  hostedCount = 0,
+  joinedCount = 0,
+  upcomingCount = 0,
+  badgeTitle = 'Member',
 }: SidebarLeftProps) {
   const pathname = usePathname();
   const navItems = [
@@ -75,7 +75,7 @@ export function SidebarLeft({
 
         <div className="pt-3.5 flex items-center justify-between">
           <span className="text-xs text-neutral-400">
-            City ranking: <strong className="text-neutral-200 font-semibold">{cityRankPercentile}</strong>
+            Upcoming activities: <strong className="text-neutral-200 font-semibold">{upcomingCount}</strong>
           </span>
           <span className="px-2.5 py-1 text-[10px] font-bold rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
             {badgeTitle}

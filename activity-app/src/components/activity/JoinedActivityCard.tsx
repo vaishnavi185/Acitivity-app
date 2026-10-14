@@ -21,11 +21,13 @@ export function JoinedActivityCard({ activity, onClick }: JoinedActivityCardProp
       aria-label={`View details for ${activity.title}`}
     >
       <div className="flex min-w-0 items-start gap-4">
-        <img
-          src={activity.imageUrl}
-          alt=""
-          className="h-16 w-16 flex-shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
-        />
+        {activity.imageUrl ? (
+          <img
+            src={activity.imageUrl}
+            alt=""
+            className="h-16 w-16 flex-shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
+          />
+        ) : <div className="h-16 w-16 flex-shrink-0 rounded-2xl bg-neutral-100 sm:h-20 sm:w-20" aria-label="No activity image available" />}
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-800">

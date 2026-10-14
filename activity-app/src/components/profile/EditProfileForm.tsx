@@ -11,8 +11,9 @@ export interface ProfileFormData {
 
 interface EditProfileFormProps {
   initialData?: ProfileFormData;
-  onSave?: (data: ProfileFormData) => void;
+  onSave?: (data: ProfileFormData) => void | Promise<void>;
   onCancel?: () => void;
+  isSaving?: boolean;
 }
 
 export function EditProfileForm({
@@ -24,6 +25,7 @@ export function EditProfileForm({
   },
   onSave,
   onCancel,
+  isSaving = false,
 }: EditProfileFormProps) {
   const [formData, setFormData] = useState<ProfileFormData>(initialData);
 
@@ -37,9 +39,9 @@ export function EditProfileForm({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave?.(formData);
+    await onSave?.(formData);
   };
 
   return (
@@ -61,6 +63,9 @@ export function EditProfileForm({
               name="fullName"
               value={formData.fullName}
               onChange={handleInputChange}
+              minLength={2}
+              maxLength={120}
+              required
               placeholder="e.g. Aryan Sharma"
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
@@ -74,7 +79,7 @@ export function EditProfileForm({
               type="email"
               name="email"
               value={formData.email}
-              onChange={handleInputChange}
+              readOnly
               placeholder="e.g. aryan.sharma@example.com"
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
@@ -91,6 +96,7 @@ export function EditProfileForm({
             name="location"
             value={formData.location}
             onChange={handleInputChange}
+            maxLength={120}
             placeholder="e.g. Indiranagar, Bangalore"
             className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
           />
@@ -106,6 +112,7 @@ export function EditProfileForm({
             rows={4}
             value={formData.bio}
             onChange={handleInputChange}
+            maxLength={500}
             placeholder="Tell people about yourself, your hobbies, favorite activities..."
             className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-y"
           />
@@ -125,9 +132,10 @@ export function EditProfileForm({
 
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-2xl bg-[#FF4D24] hover:bg-[#E63E17] active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 transition-all cursor-pointer"
+            disabled={isSaving}
+            className="px-6 py-2.5 rounded-2xl bg-[#FF4D24] hover:bg-[#E63E17] active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Save Profile Changes
+            {isSaving ? 'Saving…' : 'Save Profile Changes'}
           </button>
         </div>
       </form>

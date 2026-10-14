@@ -1,150 +1,236 @@
 "use client";
 
-import { useState } from 'react';
-import { MyActivityCard, type MyActivityData } from '@/src/components/activity/MyActivityCard';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ApiError } from '@/service/AuthService';
+import {
+  deleteActivity,
+  getActivityById,
+  getMyCreatedActivities,
+  getMyJoinedActivities,
+  joinActivity,
+  leaveActivity,
+  toggleActivityBookmark,
+  toggleActivityLike,
+  updateActivity,
+  type Activity,
+  type ActivityPayload,
+} from '@/service/activityService';
+import { getCurrentUserBookmarks } from '@/service/userService';
+import { getDashboardActivities } from '@/service/dashboardService';
+import { useAuth } from '@/src/components/auth/AuthProvider';
+import { ActivityDetailModal, type ActivityDetailData } from '@/src/components/activity/ActivityDetailModal';
 import { JoinedActivityCard } from './JoinedActivityCard';
-import { ActivityDetailModal, type ActivityDetailData } from './ActivityDetailModal';
+import { MyActivityCard } from '@/src/components/activity/MyActivityCard';
 import { StatCard } from '@/src/components/dashboard/StatCard';
 import { EditActivityModal, type EditPlanData } from '@/src/components/plan/EditActivityModal';
-
-type JoinedActivityData = MyActivityData & {
-  hostName: string;
-  hostLocation: string;
-  hostAvatar: string;
-};
-
-const initialHostedActivities: MyActivityData[] = [
-  {
-    id: 'activity-1',
-    imageUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=400&auto=format&fit=crop&q=80',
-    category: 'Sports',
-    date: 'Sunday, 19 Oct',
-    dateValue: '2025-10-19',
-    time: '7:00 AM',
-    startTime: '07:00',
-    endTime: '09:00',
-    environment: 'Indoor',
-    description: '',
-    title: 'Morning Badminton Doubles Rally',
-    location: 'Play Arena, Sarjapur',
-    filledSpots: 3,
-    totalSpots: 4,
-  },
-];
-
-const initialJoinedActivities: JoinedActivityData[] = [
-  {
-    id: 'activity-2',
-    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=400&auto=format&fit=crop&q=80',
-    category: 'Gaming',
-    date: 'Saturday, 18 Oct',
-    dateValue: '2025-10-18',
-    time: '6:30 PM',
-    startTime: '18:30',
-    endTime: '20:30',
-    environment: 'Indoor',
-    description: '',
-    title: 'Catan & Strategy Night',
-    location: 'Indiranagar, 100ft Road',
-    filledSpots: 3,
-    totalSpots: 5,
-    hostName: 'Kabir',
-    hostLocation: 'Indiranagar, Bangalore',
-    hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-  },
-];
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-function formatTime(time: string) {
-  return new Intl.DateTimeFormat('en', {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(`1970-01-01T${time}:00`));
-}
+import { useDashboardContext } from '@/src/components/dashboard/AppShell';
+import { toActivityDetail, toMyActivity } from './activityMappers';
+import { confirmAction } from '@/src/lib/confirmAction';
 
 export default function MyActivitiesPage() {
-  const [hostedActivities, setHostedActivities] = useState(initialHostedActivities);
-  const joinedActivities = initialJoinedActivities;
+  const { categories, currentUserId } = useDashboardContext();
+  const { notify } = useAuth();
+  const [hostedActivities, setHostedActivities] = useState<Activity[]>([]);
+  const [joinedActivities, setJoinedActivities] = useState<Activity[]>([]);
+  const [upcomingActivities, setUpcomingActivities] = useState<Activity[]>([]);
+  const [pastActivities, setPastActivities] = useState<Activity[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [activeActivityList, setActiveActivityList] = useState<'hosted' | 'joined'>('hosted');
   const [activityToEdit, setActivityToEdit] = useState<EditPlanData | null>(null);
   const [activityToView, setActivityToView] = useState<ActivityDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const showApiError = useCallback((error: unknown, fallback: string) => {
+    if (!(error instanceof ApiError && error.status === 401)) {
+      notify(error instanceof Error ? error.message : fallback, 'error');
+    }
+  }, [notify]);
+
+  const refreshLists = useCallback(async () => {
+    try {
+      const [created, joined, upcoming, past, bookmarks] = await Promise.all([
+        getMyCreatedActivities(),
+        getMyJoinedActivities(),
+        getDashboardActivities('upcoming'),
+        getDashboardActivities('past'),
+        getCurrentUserBookmarks(),
+      ]);
+      setHostedActivities(created);
+      setJoinedActivities(joined);
+      setUpcomingActivities(upcoming);
+      setPastActivities(past);
+      setBookmarkedIds(new Set(bookmarks.map((activity) => activity.id)));
+      setLikedIds(new Set(bookmarks.filter((activity) => activity.is_liked).map((activity) => activity.id)));
+      setLoadError('');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load your activities.');
+      showApiError(error, 'Unable to load your activities.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showApiError]);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void refreshLists(), 0);
+    const handleUpdate = () => void refreshLists();
+    window.addEventListener('app:activities-updated', handleUpdate);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener('app:activities-updated', handleUpdate);
+    };
+  }, [refreshLists]);
+
+  const joinedIds = useMemo(
+    () => new Set(joinedActivities.map((activity) => activity.id)),
+    [joinedActivities],
+  );
+  const upcomingHosted = upcomingActivities.filter((activity) => activity.host_id === currentUserId);
+  const upcomingJoined = upcomingActivities.filter((activity) => joinedIds.has(activity.id));
 
   const handleEdit = (id: string) => {
     const activity = hostedActivities.find((item) => item.id === id);
     if (!activity) return;
-
     setActivityToEdit({
       id: activity.id,
       title: activity.title,
-      category: activity.category,
-      environment: activity.environment ?? 'Indoor',
-      description: activity.description ?? '',
+      categoryId: activity.category_id,
+      environment: activity.environment === 'indoor' ? 'Indoor' : 'Outdoor',
+      description: activity.description,
       location: activity.location,
-      date: activity.dateValue ?? '2025-10-19',
-      startTime: activity.startTime ?? '17:00',
-      endTime: activity.endTime ?? '19:00',
-      additionalParticipants: Math.max(1, activity.totalSpots - 1),
-      coverImage: activity.imageUrl,
+      date: activity.activity_date,
+      startTime: activity.start_time.slice(0, 5),
+      endTime: activity.end_time.slice(0, 5),
+      additionalParticipants: activity.additional_needed,
+      coverImage: activity.cover_image_url ?? '',
     });
   };
 
-  const handleViewDetails = (id: string) => {
-    const activity = joinedActivities.find((item) => item.id === id);
-    if (!activity) return;
-
-    setActivityToView({
-      id: activity.id,
-      title: activity.title,
-      category: activity.category,
-      environment: activity.environment ?? 'Indoor',
-      coverImage: activity.imageUrl,
-      date: activity.date,
-      time: activity.time,
-      totalGroupSize: activity.totalSpots,
-      openSpots: Math.max(0, activity.totalSpots - activity.filledSpots),
-      meetingSpot: activity.location,
-      description: activity.description || 'Activity details will be shared by the host.',
-      host: {
-        name: activity.hostName,
-        location: activity.hostLocation,
-        avatarUrl: activity.hostAvatar,
-      },
-      crew: [],
-      isLiked: false,
-      isBookmarked: false,
-      isJoined: true,
-    });
+  const handleSave = async (updatedPlan: EditPlanData) => {
+    const payload: ActivityPayload = {
+      category_id: updatedPlan.categoryId,
+      title: updatedPlan.title,
+      description: updatedPlan.description,
+      cover_image_url: updatedPlan.coverImage || null,
+      location: updatedPlan.location,
+      activity_date: updatedPlan.date,
+      start_time: updatedPlan.startTime,
+      end_time: updatedPlan.endTime,
+      environment: updatedPlan.environment === 'Indoor' ? 'indoor' : 'outdoor',
+      additional_needed: updatedPlan.additionalParticipants,
+    };
+    try {
+      await updateActivity(updatedPlan.id, payload);
+      notify('Activity updated successfully.', 'success');
+      await refreshLists();
+      window.dispatchEvent(new Event('app:dashboard-refresh'));
+    } catch (error) {
+      showApiError(error, 'Unable to update activity.');
+      throw error;
+    }
   };
 
-  const handleSave = (updatedPlan: EditPlanData) => {
-    setHostedActivities((currentActivities) =>
-      currentActivities.map((activity) =>
-        activity.id === updatedPlan.id
-          ? {
-              ...activity,
-              title: updatedPlan.title,
-              category: updatedPlan.category,
-              location: updatedPlan.location,
-              imageUrl: updatedPlan.coverImage,
-              dateValue: updatedPlan.date,
-              date: formatDate(updatedPlan.date),
-              startTime: updatedPlan.startTime,
-              endTime: updatedPlan.endTime,
-              time: formatTime(updatedPlan.startTime),
-              environment: updatedPlan.environment,
-              description: updatedPlan.description,
-              totalSpots: updatedPlan.additionalParticipants + 1,
-            }
-          : activity
-      )
-    );
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirmAction({
+      title: 'Delete this activity?',
+      text: 'This action cannot be undone.',
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#dc2626',
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteActivity(id);
+      notify('Activity deleted successfully.', 'success');
+      await refreshLists();
+      window.dispatchEvent(new Event('app:dashboard-refresh'));
+    } catch (error) {
+      showApiError(error, 'Unable to delete activity.');
+    }
+  };
+
+  const handleViewDetails = async (id: string) => {
+    try {
+      const activity = await getActivityById(id);
+      setActivityToView(toActivityDetail(activity, {
+        isJoined: joinedIds.has(id),
+        isBookmarked: bookmarkedIds.has(id),
+        isLiked: likedIds.has(id) || activity.is_liked === true,
+        canJoin: activity.host_id !== currentUserId,
+      }));
+    } catch (error) {
+      showApiError(error, 'Unable to load activity details.');
+    }
+  };
+
+  const handleJoinToggle = async (isJoined: boolean) => {
+    if (!activityToView) return false;
+    if (isJoined) await joinActivity(activityToView.id);
+    else await leaveActivity(activityToView.id);
+    await refreshLists();
+    window.dispatchEvent(new Event('app:dashboard-refresh'));
+    return isJoined;
+  };
+
+  const handleBookmarkToggle = async () => {
+    if (!activityToView) return false;
+    const state = await toggleActivityBookmark(activityToView.id);
+    setBookmarkedIds((current) => {
+      const next = new Set(current);
+      if (state.is_bookmarked) next.add(activityToView.id);
+      else next.delete(activityToView.id);
+      return next;
+    });
+    setLikedIds((current) => {
+      const next = new Set(current);
+      if (state.is_liked) next.add(activityToView.id);
+      else next.delete(activityToView.id);
+      return next;
+    });
+    return state.is_bookmarked;
+  };
+
+  const handleLikeToggle = async () => {
+    if (!activityToView) return false;
+    const state = await toggleActivityLike(activityToView.id);
+    setLikedIds((current) => {
+      const next = new Set(current);
+      if (state.is_liked) next.add(activityToView.id);
+      else next.delete(activityToView.id);
+      return next;
+    });
+    setBookmarkedIds((current) => {
+      const next = new Set(current);
+      if (state.is_bookmarked) next.add(activityToView.id);
+      else next.delete(activityToView.id);
+      return next;
+    });
+    return state.is_liked;
+  };
+
+  const renderActivityState = (activities: Activity[], emptyText: string) => {
+    if (isLoading) {
+      return <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500" role="status">Loading activities…</p>;
+    }
+    if (loadError) {
+      return (
+        <div className="rounded-2xl bg-white p-5 text-sm text-neutral-500">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => { setIsLoading(true); void refreshLists(); }} className="mt-2 font-bold text-orange-600">Try again</button>
+        </div>
+      );
+    }
+    if (activities.length === 0) {
+      return <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500">{emptyText}</p>;
+    }
+    return activities.map((activity) => (
+      <JoinedActivityCard
+        key={activity.id}
+        activity={toMyActivity(activity)}
+        onClick={handleViewDetails}
+      />
+    ));
   };
 
   return (
@@ -178,42 +264,46 @@ export default function MyActivitiesPage() {
           <h2 className="text-sm font-bold text-neutral-900">Upcoming Activities</h2>
           {activeActivityList === 'hosted' ? (
             <section aria-labelledby="hosted-activities-heading" className="space-y-3">
-              <h3 id="hosted-activities-heading" className="text-sm font-semibold text-neutral-700">
-                Hosted Activities
-              </h3>
-              {hostedActivities.length > 0 ? hostedActivities.map((activity) => (
+              <h3 id="hosted-activities-heading" className="text-sm font-semibold text-neutral-700">Hosted Activities</h3>
+              {isLoading ? (
+                <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500" role="status">Loading activities…</p>
+              ) : loadError ? (
+                <div className="rounded-2xl bg-white p-5 text-sm text-neutral-500">
+                  <p>{loadError}</p>
+                  <button type="button" onClick={() => { setIsLoading(true); void refreshLists(); }} className="mt-2 font-bold text-orange-600">Try again</button>
+                </div>
+              ) : upcomingHosted.length > 0 ? upcomingHosted.map((activity) => (
                 <MyActivityCard
                   key={activity.id}
-                  activity={activity}
+                  activity={toMyActivity(activity)}
                   onEdit={handleEdit}
-                  onDelete={(id) => alert(`Delete activity: ${id}`)}
+                  onDelete={(id) => void handleDelete(id)}
                 />
               )) : (
-                <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500">You have no hosted activities yet.</p>
+                <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500">You have no upcoming hosted activities.</p>
               )}
             </section>
           ) : (
             <section aria-labelledby="joined-activities-heading" className="space-y-3">
-              <h3 id="joined-activities-heading" className="text-sm font-semibold text-neutral-700">
-                Joined Activities
-              </h3>
-              {joinedActivities.length > 0 ? joinedActivities.map((activity) => (
-                <JoinedActivityCard
-                  key={activity.id}
-                  activity={activity}
-                  onClick={handleViewDetails}
-                />
-              )) : (
-                <p className="rounded-2xl bg-white p-5 text-sm text-neutral-500">You have not joined any activities yet.</p>
+              <h3 id="joined-activities-heading" className="text-sm font-semibold text-neutral-700">Joined Activities</h3>
+              {renderActivityState(
+                upcomingJoined,
+                'You have not joined any upcoming activities yet.',
               )}
             </section>
           )}
         </div>
+
+        <section aria-labelledby="past-activities-heading" className="space-y-3">
+          <h2 id="past-activities-heading" className="text-sm font-bold text-neutral-900">Past Activities</h2>
+          {renderActivityState(pastActivities, 'No past activities yet.')}
+        </section>
       </section>
       <EditActivityModal
         key={activityToEdit?.id ?? 'closed'}
         isOpen={activityToEdit !== null}
         initialData={activityToEdit}
+        categories={categories}
         onClose={() => setActivityToEdit(null)}
         onSave={handleSave}
       />
@@ -222,6 +312,9 @@ export default function MyActivitiesPage() {
         isOpen={activityToView !== null}
         activity={activityToView}
         onClose={() => setActivityToView(null)}
+        onJoinToggle={handleJoinToggle}
+        onBookmarkChange={handleBookmarkToggle}
+        onLikeChange={handleLikeToggle}
       />
     </>
   );

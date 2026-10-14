@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import type { Category } from '@/service/categoryService';
 
 interface FeedHeaderProps {
   selectedCategory?: string;
@@ -10,16 +11,8 @@ interface FeedHeaderProps {
   onSelectFilterType?: (type: 'all' | 'indoor' | 'outdoor') => void;
   showingCount?: number;
   totalCount?: number;
+  categories?: Category[];
 }
-
-const CATEGORIES = [
-  'All',
-  'Sports',
-  'Outdoor Adventures',
-  'Social Meetups',
-  'Food & Drinks',
-  'Study & Work',
-];
 
 export function FeedHeader({
   selectedCategory = 'All',
@@ -28,6 +21,7 @@ export function FeedHeader({
   onSelectFilterType,
   showingCount = 1,
   totalCount = 5,
+  categories = [],
 }: FeedHeaderProps) {
   return (
     <div className="space-y-6">
@@ -50,20 +44,20 @@ export function FeedHeader({
 
       {/* 2. Top Scrollable Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {CATEGORIES.map((category) => {
-          const isActive = selectedCategory === category;
+        {[{ id: null, name: 'All' }, ...categories].map((category) => {
+          const isActive = selectedCategory === category.name;
           return (
             <button
-              key={category}
+              key={category.id ?? 'all'}
               type="button"
-              onClick={() => onSelectCategory?.(category)}
+              onClick={() => onSelectCategory?.(category.name)}
               className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 isActive
                   ? 'bg-white text-orange-600 border border-orange-200 shadow-2xs'
                   : 'bg-white/80 text-neutral-600 border border-neutral-200/80 hover:bg-neutral-50 hover:text-neutral-900'
               }`}
             >
-              {category}
+              {category.name}
             </button>
           );
         })}

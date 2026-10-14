@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ChevronRight, Users, Sparkles } from 'lucide-react';
+import { ChevronRight, Users } from 'lucide-react';
 
 interface CircleItem {
   id: string;
@@ -18,12 +18,7 @@ interface SidebarRightProps {
 }
 
 export function SidebarRight({
-  circles = [
-    { id: '1', name: 'Bangalore Boardgamers', members: '1.2k members', icon: '🎲' },
-    { id: '2', name: 'Weekend Trekkers Club', members: '3.4k members', icon: '🥾' },
-    { id: '3', name: 'Indiranagar Smashers (Badminton)', members: '890 members', icon: '🏸' },
-    { id: '4', name: 'Early Stage Indie Co-working', members: '640 members', icon: '💻' },
-  ],
+  circles = [],
   onSeeAllCircles,
   onCircleClick,
   onCreateInstantPlan,
@@ -37,35 +32,43 @@ export function SidebarRight({
           <button
             type="button"
             onClick={onSeeAllCircles}
-            className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer"
+            disabled={!onSeeAllCircles}
+            title={!onSeeAllCircles ? 'The backend does not currently provide a circles endpoint.' : undefined}
+            className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
             See all
           </button>
         </div>
 
-        <div className="space-y-3">
-          {circles.map((circle) => (
-            <button
-              key={circle.id}
-              type="button"
-              onClick={() => onCircleClick?.(circle.id)}
-              className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-neutral-50 transition-all group text-left cursor-pointer"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-base flex-shrink-0 group-hover:scale-105 transition-transform">
-                  {circle.icon}
+        {circles.length > 0 ? (
+          <div className="space-y-3">
+            {circles.map((circle) => (
+              <button
+                key={circle.id}
+                type="button"
+                onClick={() => onCircleClick?.(circle.id)}
+                className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-neutral-50 transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-base flex-shrink-0 group-hover:scale-105 transition-transform">
+                    {circle.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-neutral-800 truncate group-hover:text-orange-600 transition-colors">
+                      {circle.name}
+                    </p>
+                    <p className="text-[11px] text-neutral-400">{circle.members}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-neutral-800 truncate group-hover:text-orange-600 transition-colors">
-                    {circle.name}
-                  </p>
-                  <p className="text-[11px] text-neutral-400">{circle.members}</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2" />
-            </button>
-          ))}
-        </div>
+                <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-2xl bg-neutral-50 p-3 text-xs text-neutral-500">
+            Circles aren’t available from the activity API yet.
+          </p>
+        )}
       </div>
 
       {/* 2. Spontaneous Plan Card */}

@@ -4,16 +4,16 @@ import React, { useState } from 'react';
 import { 
   X, 
   MapPin, 
-  Calendar, 
-  Clock, 
   Info, 
   Check, 
   ChevronDown 
 } from 'lucide-react';
+import type { Category } from '@/service/categoryService';
+import { useAuth } from '../auth/AuthProvider';
 
 export interface NewPlanFormData {
   title: string;
-  category: string;
+  categoryId: number;
   environment: 'Indoor' | 'Outdoor';
   description: string;
   location: string;
@@ -27,7 +27,8 @@ export interface NewPlanFormData {
 interface HostPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit?: (data: NewPlanFormData) => void;
+  onSubmit?: (data: NewPlanFormData) => Promise<void>;
+  categories: Category[];
 }
 
 const COVER_OPTIONS = [
@@ -67,10 +68,12 @@ export function HostPlanModal({
   isOpen,
   onClose,
   onSubmit,
+  categories,
 }: HostPlanModalProps) {
+  const { notify } = useAuth();
   const [formData, setFormData] = useState<NewPlanFormData>({
     title: '',
-    category: 'Sports',
+    categoryId: 0,
     environment: 'Indoor',
     description: '',
     location: '',
@@ -80,6 +83,7 @@ export function HostPlanModal({
     additionalParticipants: 3,
     coverImage: COVER_OPTIONS[0].url,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -104,14 +108,45 @@ export function HostPlanModal({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Please provide a plan title');
+    if (formData.title.trim().length < 3) {
+      notify('Activity title must be at least 3 characters.', 'error');
       return;
     }
-    onSubmit?.(formData);
-    onClose();
+    const categoryId = formData.categoryId || categories[0]?.id;
+    if (!categoryId) {
+      notify('Select a category before publishing.', 'error');
+      return;
+    }
+    if (formData.location.trim().length < 2) {
+      notify('Location must be at least 2 characters.', 'error');
+      return;
+    }
+    if (!formData.date || !formData.startTime || !formData.endTime) {
+      notify('Provide an activity date, start time, and end time.', 'error');
+      return;
+    }
+    if (formData.endTime <= formData.startTime) {
+      notify('End time must be after start time.', 'error');
+      return;
+    }
+    if (!onSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        ...formData,
+        categoryId,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        location: formData.location.trim(),
+      });
+      onClose();
+    } catch {
+      // The caller reports API errors through the shared toast.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -151,6 +186,8 @@ export function HostPlanModal({
               name="title"
               value={formData.title}
               onChange={handleInputChange}
+              minLength={3}
+              required
               placeholder="e.g. Sunday Morning Badminton Doubles"
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
@@ -164,17 +201,17 @@ export function HostPlanModal({
               </label>
               <div className="relative">
                 <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
+                  name="categoryId"
+                  value={formData.categoryId || categories[0]?.id || ''}
+                  onChange={(event) => setFormData((current) => ({ ...current, categoryId: Number(event.target.value) }))}
+                  required
                   className="w-full appearance-none px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all cursor-pointer pr-10"
                 >
-                  <option value="Sports">Sports</option>
-                  <option value="Outdoor Adventures">Outdoor Adventures</option>
-                  <option value="Social Meetups">Social Meetups</option>
-                  <option value="Gaming">Gaming</option>
-                  <option value="Food & Drinks">Food & Drinks</option>
-                  <option value="Study & Work">Study & Work</option>
+                  {categories.length === 0 ? (
+                    <option value="">No categories available</option>
+                  ) : categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -209,6 +246,7 @@ export function HostPlanModal({
               rows={3}
               value={formData.description}
               onChange={handleInputChange}
+              required
               placeholder="Tell people what you are planning, what skill level is expected, what gear to bring, and how split costs will work..."
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-y"
             />
@@ -228,6 +266,8 @@ export function HostPlanModal({
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
+                minLength={2}
+                required
                 placeholder="Venue name, landmark, and area (e.g. Play9 Arena, Indiranagar)"
                 className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
               />
@@ -244,6 +284,7 @@ export function HostPlanModal({
                   name="date"
                   value={formData.date}
                   onChange={handleInputChange}
+                  required
                   className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                 />
               </div>
@@ -257,6 +298,7 @@ export function HostPlanModal({
                   name="startTime"
                   value={formData.startTime}
                   onChange={handleInputChange}
+                  required
                   className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                 />
               </div>
@@ -270,6 +312,7 @@ export function HostPlanModal({
                   name="endTime"
                   value={formData.endTime}
                   onChange={handleInputChange}
+                  required
                   className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                 />
               </div>
@@ -366,9 +409,10 @@ export function HostPlanModal({
             </button>
             <button
               type="submit"
+              disabled={isSubmitting || categories.length === 0}
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
             >
-              Publish Plan
+              {isSubmitting ? 'Publishing…' : 'Publish Plan'}
             </button>
           </div>
         </form>

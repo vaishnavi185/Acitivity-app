@@ -17,6 +17,9 @@ export interface ActivityPlan {
   spotsLeft: number;
   totalSpots: number;
   description?: string;
+  isJoined?: boolean;
+  isJoining?: boolean;
+  canJoin?: boolean;
 }
 
 interface ActivityCardProps {
@@ -37,11 +40,13 @@ export function ActivityCard({
     >
       {/* Image Banner with Badges */}
       <div className="relative h-56 sm:h-64 w-full overflow-hidden bg-neutral-100">
-        <img
-          src={plan.imageUrl}
-          alt={plan.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+        {plan.imageUrl ? (
+          <img
+            src={plan.imageUrl}
+            alt={plan.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : <div className="w-full h-full bg-neutral-200" aria-label="No activity image available" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
         {/* Tags */}
@@ -57,11 +62,17 @@ export function ActivityCard({
         {/* Spots Badge */}
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
-            <img
-              src={plan.hostAvatar}
-              alt={plan.hostName}
-              className="w-7 h-7 rounded-full border-2 border-white object-cover"
-            />
+            {plan.hostAvatar ? (
+              <img
+                src={plan.hostAvatar}
+                alt={plan.hostName}
+                className="w-7 h-7 rounded-full border-2 border-white object-cover"
+              />
+            ) : (
+              <span className="w-7 h-7 rounded-full border-2 border-white bg-orange-100 text-orange-700 flex items-center justify-center text-[10px] font-bold">
+                {plan.hostName.slice(0, 1).toUpperCase()}
+              </span>
+            )}
             <span className="text-xs font-medium drop-shadow-sm">
               Hosted by <strong className="font-bold">{plan.hostName}</strong>
             </span>
@@ -103,13 +114,14 @@ export function ActivityCard({
 
           <button
             type="button"
+            disabled={plan.isJoining || plan.canJoin === false}
             onClick={(e) => {
               e.stopPropagation();
               onJoin?.(plan.id);
             }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span>Request to Join</span>
+            <span>{plan.isJoining ? 'Updating…' : plan.canJoin === false ? 'Your Activity' : plan.isJoined ? 'Leave Activity' : 'Request to Join'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

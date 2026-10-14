@@ -1,13 +1,12 @@
 "use client";
 
 import React from 'react';
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { AuthInput } from './AuthFormFields';
 
 interface FormDataState {
   fullName: string;
   email: string;
-  phone: string;
   password: string;
   confirmPassword: string;
   loginEmail: string;
@@ -99,27 +98,22 @@ export function AuthFormPanel({
             value={formData.fullName}
             onChange={handleInputChange}
             placeholder="e.g. Riya Sharma"
+            required
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <AuthInput
-              label="Email Address"
-              icon={<Mail className="w-4 h-4" />}
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="riya@example.com"
-            />
-            <AuthInput
-              label="Phone Number"
-              icon={<Phone className="w-4 h-4" />}
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="+91 98765 43210"
-            />
+            <div className="sm:col-span-2">
+              <AuthInput
+                label="Email Address"
+                icon={<Mail className="w-4 h-4" />}
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="riya@example.com"
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -130,7 +124,8 @@ export function AuthFormPanel({
               name="password"
               value={formData.password}
               onChange={handleInputChange}
-              placeholder="Min 6 characters"
+              placeholder="Min 8 characters"
+              required
               rightElement={
                 <button
                   type="button"
@@ -150,6 +145,7 @@ export function AuthFormPanel({
               value={formData.confirmPassword}
               onChange={handleInputChange}
               placeholder="Re-enter password"
+              required
               rightElement={
                 <button
                   type="button"
@@ -207,6 +203,7 @@ export function AuthFormPanel({
             value={formData.loginEmail}
             onChange={handleInputChange}
             placeholder="you@email.com"
+            required
           />
 
           <div>
@@ -230,6 +227,7 @@ export function AuthFormPanel({
               value={formData.loginPassword}
               onChange={handleInputChange}
               placeholder="Enter your password"
+              required
               rightElement={
                 <button
                   type="button"

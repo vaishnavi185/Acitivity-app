@@ -1,33 +1,33 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthBrandPanel } from './AuthBrandPanel';
 import { AuthFormPanel } from './AuthFormPanel';
-import { Toast } from './AuthToast';
+import { loginUser, registerUser } from '@/service/AuthService';
+import { useAuth } from './AuthProvider';
 
-export default function RegisterScreen() {
-  const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
+export default function RegisterScreen({
+  initialMode = 'register',
+}: {
+  initialMode?: 'register' | 'login';
+}) {
+  const router = useRouter();
+  const { notify } = useAuth();
+  const [authMode, setAuthMode] = useState<'register' | 'login'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
     loginEmail: '',
     loginPassword: ''
   });
-
-  const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage(msg);
-    setToastType(type);
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -36,53 +36,84 @@ export default function RegisterScreen() {
     }));
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
 
-    if (!formData.fullName.trim()) {
-      showNotification('Please enter your full name', 'error');
+    const fullNameLength = Array.from(formData.fullName).length;
+    if (fullNameLength < 2 || fullNameLength > 120) {
+      notify('Full name must be between 2 and 120 characters.', 'error');
       return;
     }
     if (!formData.email.trim() || !formData.email.includes('@')) {
-      showNotification('Please enter a valid email address', 'error');
+      notify('Please enter a valid email address', 'error');
       return;
     }
-    if (!formData.phone.trim() || formData.phone.length < 10) {
-      showNotification('Please enter a valid 10-digit phone number', 'error');
+    const passwordLength = Array.from(formData.password).length;
+    if (passwordLength < 8 || passwordLength > 72) {
+      notify('Password must be between 8 and 72 characters.', 'error');
       return;
     }
-    if (formData.password.length < 6) {
-      showNotification('Password must be at least 6 characters long', 'error');
+    if (new TextEncoder().encode(formData.password).length > 72) {
+      notify('Password must not exceed 72 UTF-8 bytes.', 'error');
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      showNotification('Passwords do not match! Please check again.', 'error');
+      notify('Passwords do not match! Please check again.', 'error');
       return;
     }
     if (!agreedToTerms) {
-      showNotification('Please agree to community guidelines & terms to proceed.', 'error');
+      notify('Please agree to community guidelines & terms to proceed.', 'error');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await registerUser({
+        full_name: formData.fullName,
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+      notify(
+        `🎉 Welcome aboard, ${formData.fullName.trim().split(/\s+/)[0]}! Account created successfully.`,
+        'success'
+      );
+      setAuthMode('login');
+      router.replace('/login');
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : 'Registration failed. Please try again.',
+        'error'
+      );
+    } finally {
       setIsLoading(false);
-      showNotification(`🎉 Welcome aboard, ${formData.fullName.split(' ')[0]}! Account created successfully.`, 'success');
-    }, 1200);
+    }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     if (!formData.loginEmail || !formData.loginPassword) {
-      showNotification('Please fill in both Email and Password', 'error');
+      notify('Please fill in both Email and Password', 'error');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await loginUser({
+        email: formData.loginEmail.trim(),
+        password: formData.loginPassword,
+      });
+      notify('Login successful. Welcome back!', 'success');
+      router.push('/dashboard');
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : 'Login failed. Please try again.',
+        'error'
+      );
+    } finally {
       setIsLoading(false);
-      showNotification('Welcome back to your local vibe!', 'success');
-    }, 1000);
+    }
   };
 
   return (
@@ -91,15 +122,6 @@ export default function RegisterScreen() {
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-gradient-to-br from-amber-300/40 to-orange-400/30 rounded-full blur-3xl pointer-events-none animate-pulse" />
       <div className="absolute -bottom-32 -right-28 w-96 h-96 bg-gradient-to-tl from-orange-400/30 to-amber-200/40 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 left-1/3 -translate-y-1/2 w-80 h-80 bg-amber-200/20 rounded-full blur-2xl pointer-events-none" />
-
-      {/* Dynamic Toast Feedback Alert */}
-      {toastMessage && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setToastMessage(null)}
-        />
-      )}
 
       {/* Main Glassmorphism Master Card */}
       <div className="w-full max-w-6xl bg-white/80 backdrop-blur-xl border border-white/90 rounded-3xl shadow-[0_20px_50px_rgba(249,115,22,0.12)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
@@ -119,7 +141,7 @@ export default function RegisterScreen() {
           agreedToTerms={agreedToTerms}
           setAgreedToTerms={setAgreedToTerms}
           isLoading={isLoading}
-          onForgotPassword={() => showNotification('Password reset link sent to your registered email.', 'success')}
+          onForgotPassword={() => notify('Password reset link sent to your registered email.', 'success')}
         />
       </div>
     </div>

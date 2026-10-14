@@ -41,11 +41,13 @@ export function MyActivityCard({
       
       {/* Left Section: Image Thumbnail & Activity Details */}
       <div className="flex items-start gap-4 min-w-0">
-        <img
-          src={activity.imageUrl}
-          alt={activity.title}
-          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover flex-shrink-0"
-        />
+        {activity.imageUrl ? (
+          <img
+            src={activity.imageUrl}
+            alt={activity.title}
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover flex-shrink-0"
+          />
+        ) : <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-neutral-100 flex-shrink-0" aria-label="No activity image available" />}
 
         <div className="space-y-1.5 min-w-0">
           {/* Category Tag & Date/Time */}

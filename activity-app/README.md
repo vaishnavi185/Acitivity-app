@@ -20,6 +20,26 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Automated tests
+
+Backend API tests run against an isolated in-memory SQLite database; they do not use or modify the configured PostgreSQL database:
+
+```powershell
+cd ..\backend
+py -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pytest -q
+```
+
+Frontend browser tests use Playwright with Chromium. Install the browser once, then run the tests from `activity-app`:
+
+```powershell
+npx playwright install chromium
+npm run test:e2e
+```
+
+The Playwright configuration starts or reuses the Next.js development server at `http://localhost:3000`. The auth-flow tests intercept auth API responses to verify the UI and request contract; backend route and persistence behavior is tested separately by pytest.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

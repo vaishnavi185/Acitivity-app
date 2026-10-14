@@ -12,6 +12,7 @@ import {
   Bookmark 
 } from 'lucide-react';
 import { Toast } from '../auth/AuthToast';
+import { ApiError } from '@/service/AuthService';
 
 
 export interface CrewMember {
@@ -43,15 +44,16 @@ export interface ActivityDetailData {
   isLiked?: boolean;
   isBookmarked?: boolean;
   isJoined?: boolean;
+  canJoin?: boolean;
 }
 
 interface ActivityDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   activity: ActivityDetailData | null;
-  onLikeChange?: (isLiked: boolean) => void;
-  onBookmarkChange?: (isBookmarked: boolean) => void;
-  onJoinToggle?: (isJoined: boolean) => void;
+  onLikeChange?: (isLiked: boolean) => Promise<boolean | void>;
+  onBookmarkChange?: (isBookmarked: boolean) => Promise<boolean | void>;
+  onJoinToggle?: (isJoined: boolean) => Promise<boolean | void>;
 }
 
 export function ActivityDetailModal({
@@ -64,8 +66,9 @@ export function ActivityDetailModal({
 }: ActivityDetailModalProps) {
   // Local interaction states
   const [isLiked, setIsLiked] = useState<boolean>(() => activity?.isLiked ?? false);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(() => activity?.isBookmarked ?? true);
-  const [isJoined, setIsJoined] = useState<boolean>(() => activity?.isJoined ?? true);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(() => activity?.isBookmarked ?? false);
+  const [isJoined, setIsJoined] = useState<boolean>(() => activity?.isJoined ?? false);
+  const [isPending, setIsPending] = useState(false);
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -77,38 +80,56 @@ export function ActivityDetailModal({
   };
 
   // Like Toggle Handler
-  const handleLikeToggle = () => {
+  const handleLikeToggle = async () => {
     const nextState = !isLiked;
-    setIsLiked(nextState);
-    onLikeChange?.(nextState);
-    if (nextState) {
-      showToast('Added to your liked plans! ❤️', 'success');
-    } else {
-      showToast('Removed from liked plans.', 'error');
+    setIsPending(true);
+    try {
+      const updatedState = await onLikeChange?.(nextState);
+      const actualState = typeof updatedState === 'boolean' ? updatedState : nextState;
+      setIsLiked(actualState);
+      showToast(actualState ? 'Added to your liked plans! ❤️' : 'Removed from liked plans.', 'success');
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        showToast(error instanceof Error ? error.message : 'Unable to update like.', 'error');
+      }
+    } finally {
+      setIsPending(false);
     }
   };
 
   // Bookmark Toggle Handler
-  const handleBookmarkToggle = () => {
+  const handleBookmarkToggle = async () => {
     const nextState = !isBookmarked;
-    setIsBookmarked(nextState);
-    onBookmarkChange?.(nextState);
-    if (nextState) {
-      showToast('Activity bookmarked successfully! 🔖', 'success');
-    } else {
-      showToast('Removed from bookmarks.', 'error');
+    setIsPending(true);
+    try {
+      const updatedState = await onBookmarkChange?.(nextState);
+      const actualState = typeof updatedState === 'boolean' ? updatedState : nextState;
+      setIsBookmarked(actualState);
+      showToast(actualState ? 'Activity bookmarked successfully! 🔖' : 'Removed from bookmarks.', 'success');
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        showToast(error instanceof Error ? error.message : 'Unable to update bookmark.', 'error');
+      }
+    } finally {
+      setIsPending(false);
     }
   };
 
   // Join / Leave Activity Handler
-  const handleJoinToggle = () => {
+  const handleJoinToggle = async () => {
     const nextState = !isJoined;
-    setIsJoined(nextState);
-    onJoinToggle?.(nextState);
-    if (nextState) {
-      showToast('🎉 You have joined this activity!', 'success');
-    } else {
-      showToast('You left the activity group.', 'error');
+    setIsPending(true);
+    try {
+      const updatedState = await onJoinToggle?.(nextState);
+      const actualState = typeof updatedState === 'boolean' ? updatedState : nextState;
+      setIsJoined(actualState);
+      showToast(actualState ? '🎉 You have joined this activity!' : 'You left the activity group.', 'success');
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        showToast(error instanceof Error ? error.message : 'Unable to update activity membership.', 'error');
+      }
+    } finally {
+      setIsPending(false);
     }
   };
 
@@ -146,11 +167,13 @@ export function ActivityDetailModal({
           <div className="overflow-y-auto flex-1">
             {/* 1. Hero Image & Header */}
             <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-neutral-900">
-              <img
-                src={activity.coverImage}
-                alt={activity.title}
-                className="w-full h-full object-cover"
-              />
+              {activity.coverImage ? (
+                <img
+                  src={activity.coverImage}
+                  alt={activity.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : <div className="w-full h-full bg-neutral-700" aria-label="No activity image available" />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
               <div className="absolute bottom-5 left-5 right-5 space-y-2.5">
@@ -238,11 +261,20 @@ export function ActivityDetailModal({
                   Organized by
                 </span>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={activity.host.avatarUrl}
-                    alt={activity.host.name}
-                    className="w-11 h-11 rounded-full object-cover border-2 border-orange-400/30"
-                  />
+                  {activity.host.avatarUrl.trim() ? (
+                    <img
+                      src={activity.host.avatarUrl.trim() || undefined}
+                      alt={activity.host.name}
+                      className="w-11 h-11 rounded-full object-cover border-2 border-orange-400/30"
+                    />
+                  ) : (
+                    <div
+                      aria-label={`${activity.host.name} avatar`}
+                      className="w-11 h-11 rounded-full border-2 border-orange-400/30 bg-orange-100 text-orange-700 flex items-center justify-center font-bold"
+                    >
+                      {activity.host.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h4 className="text-xs sm:text-sm font-bold text-neutral-900">
                       {activity.host.name}
@@ -267,11 +299,20 @@ export function ActivityDetailModal({
                       key={member.id}
                       className="p-3 rounded-2xl bg-[#FAF8F5] border border-neutral-200/80 flex items-center gap-3"
                     >
-                      <img
-                        src={member.avatarUrl}
-                        alt={member.name}
-                        className="w-9 h-9 rounded-full object-cover flex-shrink-0"
-                      />
+                      {member.avatarUrl.trim() ? (
+                        <img
+                          src={member.avatarUrl.trim() || undefined}
+                          alt={member.name}
+                          className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          aria-label={`${member.name} avatar`}
+                          className="w-9 h-9 rounded-full flex-shrink-0 bg-neutral-200 text-neutral-600 flex items-center justify-center text-xs font-bold"
+                        >
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-neutral-900 truncate">
                           {member.name}{' '}
@@ -297,6 +338,7 @@ export function ActivityDetailModal({
               <button
                 type="button"
                 onClick={handleLikeToggle}
+                disabled={isPending}
                 className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                   isLiked
                     ? 'bg-rose-50 border-rose-200 text-rose-500 shadow-2xs'
@@ -310,6 +352,7 @@ export function ActivityDetailModal({
               <button
                 type="button"
                 onClick={handleBookmarkToggle}
+                disabled={isPending || activity.canJoin === false}
                 className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                   isBookmarked
                     ? 'bg-orange-50 border-orange-200 text-orange-500 shadow-2xs'
@@ -326,6 +369,7 @@ export function ActivityDetailModal({
               <button
                 type="button"
                 onClick={handleJoinToggle}
+                disabled={isPending}
                 className="px-6 py-3 rounded-2xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100/70 text-rose-600 text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Leave Activity
@@ -334,9 +378,10 @@ export function ActivityDetailModal({
               <button
                 type="button"
                 onClick={handleJoinToggle}
-                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
+                disabled={isPending || activity.canJoin === false}
+                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Join Activity
+                {activity.canJoin === false ? "You're hosting" : 'Join Activity'}
               </button>
             )}
           </div>

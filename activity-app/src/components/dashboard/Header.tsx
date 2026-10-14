@@ -6,7 +6,8 @@ import {
   MapPin, 
   ChevronDown, 
   Search, 
-  PlusCircle 
+  PlusCircle,
+  LogOut,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -17,20 +18,23 @@ interface HeaderProps {
   onSearch?: (query: string) => void;
   onHostPlanClick?: () => void;
   onProfileClick?: () => void;
+  onLogoutClick?: () => void;
 }
 
 export function Header({
   currentLocation = 'Bangalore, IN',
-  userName = 'Aryan',
-  userAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  userName = 'Member',
+  userAvatar,
   onLocationChange,
   onSearch,
   onHostPlanClick,
   onProfileClick,
+  onLogoutClick,
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationMenuOpen, setLocationMenuOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState(currentLocation);
+  const [locationOverride, setLocationOverride] = useState<string | null>(null);
+  const selectedLocation = locationOverride ?? currentLocation;
 
   const locations = [
     'Bangalore, IN',
@@ -47,7 +51,7 @@ export function Header({
   };
 
   const handleSelectLocation = (loc: string) => {
-    setSelectedLocation(loc);
+    setLocationOverride(loc);
     setLocationMenuOpen(false);
     onLocationChange?.(loc);
   };
@@ -138,14 +142,29 @@ export function Header({
             onClick={onProfileClick}
             className="flex items-center gap-2 p-1 pr-2.5 rounded-full hover:bg-neutral-100 border border-transparent hover:border-neutral-200 transition-all cursor-pointer"
           >
-            <img
-              src={userAvatar}
-              alt={userName}
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-orange-400/40"
-            />
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt={userName}
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-orange-400/40"
+              />
+            ) : (
+              <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 ring-2 ring-orange-400/40 flex items-center justify-center text-xs font-bold">
+                {userName.slice(0, 1).toUpperCase()}
+              </span>
+            )}
             <span className="text-xs sm:text-sm font-semibold text-neutral-800 hidden sm:inline-block">
               {userName}
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={onLogoutClick}
+            aria-label="Log out"
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-neutral-600 transition-colors hover:bg-orange-50 hover:text-orange-700"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
 

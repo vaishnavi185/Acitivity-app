@@ -8,11 +8,13 @@ import {
   Check, 
   ChevronDown 
 } from 'lucide-react';
+import type { Category } from '@/service/categoryService';
+import { useAuth } from '../auth/AuthProvider';
 
 export interface EditPlanData {
   id: string;
   title: string;
-  category: string;
+  categoryId: number;
   environment: 'Indoor' | 'Outdoor';
   description: string;
   location: string;
@@ -27,7 +29,8 @@ interface EditActivityModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData: EditPlanData | null;
-  onSave?: (updatedPlan: EditPlanData) => void;
+  onSave?: (updatedPlan: EditPlanData) => Promise<void>;
+  categories: Category[];
 }
 
 const COVER_OPTIONS = [
@@ -68,11 +71,13 @@ export function EditActivityModal({
   onClose,
   initialData,
   onSave,
+  categories,
 }: EditActivityModalProps) {
+  const { notify } = useAuth();
   const [formData, setFormData] = useState<EditPlanData>(() => initialData ?? {
     id: '',
     title: '',
-    category: 'Sports',
+    categoryId: 0,
     environment: 'Indoor',
     description: '',
     location: '',
@@ -82,6 +87,7 @@ export function EditActivityModal({
     additionalParticipants: 3,
     coverImage: COVER_OPTIONS[1].url,
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!isOpen || !initialData) return null;
 
@@ -106,14 +112,43 @@ export function EditActivityModal({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Please provide an activity title');
+    if (formData.title.trim().length < 3) {
+      notify('Activity title must be at least 3 characters.', 'error');
       return;
     }
-    onSave?.(formData);
-    onClose();
+    if (!formData.categoryId) {
+      notify('Select a category before saving.', 'error');
+      return;
+    }
+    if (formData.location.trim().length < 2) {
+      notify('Location must be at least 2 characters.', 'error');
+      return;
+    }
+    if (!formData.date || !formData.startTime || !formData.endTime) {
+      notify('Provide an activity date, start time, and end time.', 'error');
+      return;
+    }
+    if (formData.endTime <= formData.startTime) {
+      notify('End time must be after start time.', 'error');
+      return;
+    }
+    if (!onSave || isSaving) return;
+    setIsSaving(true);
+    try {
+      await onSave({
+        ...formData,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        location: formData.location.trim(),
+      });
+      onClose();
+    } catch {
+      // The caller reports API errors through the shared toast.
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -153,6 +188,8 @@ export function EditActivityModal({
               name="title"
               value={formData.title}
               onChange={handleInputChange}
+              minLength={3}
+              required
               placeholder="e.g. Sunrise Trek to Savandurga Monolith"
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
@@ -166,17 +203,19 @@ export function EditActivityModal({
               </label>
               <div className="relative">
                 <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
+                  name="categoryId"
+                  value={formData.categoryId || ''}
+                  onChange={(event) => setFormData((current) => ({ ...current, categoryId: Number(event.target.value) }))}
+                  required
                   className="w-full appearance-none px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all cursor-pointer pr-10"
                 >
-                  <option value="Outdoor Adventures">Outdoor Adventures</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Social Meetups">Social Meetups</option>
-                  <option value="Gaming">Gaming</option>
-                  <option value="Food & Drinks">Food & Drinks</option>
-                  <option value="Study & Work">Study & Work</option>
+                  {categories.length === 0 && formData.categoryId ? (
+                    <option value={formData.categoryId}>Current category unavailable</option>
+                  ) : categories.length === 0 ? (
+                    <option value="">No categories available</option>
+                  ) : categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -211,6 +250,7 @@ export function EditActivityModal({
               rows={3}
               value={formData.description}
               onChange={handleInputChange}
+              required
               placeholder="Tell people what you are planning, meeting spots, rules..."
               className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-y"
             />
@@ -230,6 +270,8 @@ export function EditActivityModal({
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
+                minLength={2}
+                required
                 placeholder="Savandurga Base Camp (Meeting: Silk Board)"
                 className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
               />
@@ -245,6 +287,7 @@ export function EditActivityModal({
                 name="date"
                 value={formData.date}
                 onChange={handleInputChange}
+                required
                 className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               />
             </div>
@@ -256,6 +299,7 @@ export function EditActivityModal({
                 name="startTime"
                 value={formData.startTime}
                 onChange={handleInputChange}
+                required
                 className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               />
             </div>
@@ -267,6 +311,7 @@ export function EditActivityModal({
                 name="endTime"
                 value={formData.endTime}
                 onChange={handleInputChange}
+                required
                 className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs sm:text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               />
             </div>
@@ -361,9 +406,10 @@ export function EditActivityModal({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save Changes
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>
