@@ -493,12 +493,3 @@ You can run Python through the virtual environment directly:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-## Assessment Submission Checklist
-
-- [ ] Publish a public GitHub repository containing both frontend and backend.
-- [ ] Include installation and setup instructions.
-- [ ] Document the project architecture and API routes.
-- [ ] Run backend tests and relevant frontend checks.
-- [ ] Verify registration, login, activity discovery, creation, joining/leaving, and dashboard/profile flows.
-- [ ] Record a 3–5 minute demo video showing the core application flows.
-- [ ] Ensure no secrets, credentials, virtual environments, or generated test reports are committed.
