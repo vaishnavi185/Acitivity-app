@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from config.security import get_current_user
+from config.security import get_current_user, get_optional_current_user
 from models.user import User
 from models.activity import Activity
+from models.activity_bookmark import ActivityBookmark
+from models.activity_like import ActivityLike
 from schemas.activity import ActivityCreate, ActivityResponse, ActivityUpdate
 from service.activity_service import (
     ActivityConflictError,
@@ -38,6 +40,8 @@ def serialize_activity(
     activity: Activity,
     joined_count: int,
     include_crew: bool = False,
+    is_liked: bool = False,
+    is_bookmarked: bool = False,
 ):
     crew = []
     if include_crew:
@@ -78,13 +82,48 @@ def serialize_activity(
         "total_group_size": activity.additional_needed + 1,
         "likes_count": activity.likes_count,
         "crew": crew,
+        "is_liked": is_liked,
+        "is_bookmarked": is_bookmarked,
     }
 
 
-def serialize_activities(activities: list[Activity], db: Session):
+def serialize_activities(
+    activities: list[Activity],
+    db: Session,
+    current_user: User | None = None,
+    include_crew: bool = False,
+):
     counts = get_confirmed_participant_counts(activities, db)
+    liked_ids = set()
+    bookmarked_ids = set()
+    if current_user and activities:
+        activity_ids = [activity.id for activity in activities]
+        liked_ids = {
+            activity_id
+            for (activity_id,) in db.query(ActivityLike.activity_id)
+            .filter(
+                ActivityLike.user_id == current_user.id,
+                ActivityLike.activity_id.in_(activity_ids),
+            )
+            .all()
+        }
+        bookmarked_ids = {
+            activity_id
+            for (activity_id,) in db.query(ActivityBookmark.activity_id)
+            .filter(
+                ActivityBookmark.user_id == current_user.id,
+                ActivityBookmark.activity_id.in_(activity_ids),
+            )
+            .all()
+        }
     return [
-        serialize_activity(activity, counts.get(activity.id, 0))
+        serialize_activity(
+            activity,
+            counts.get(activity.id, 0),
+            include_crew=include_crew,
+            is_liked=activity.id in liked_ids,
+            is_bookmarked=activity.id in bookmarked_ids,
+        )
         for activity in activities
     ]
 
@@ -116,6 +155,7 @@ def list_activities(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     activities = get_activities(
         db,
@@ -125,7 +165,7 @@ def list_activities(
         skip=skip,
         limit=limit,
     )
-    return serialize_activities(activities, db)
+    return serialize_activities(activities, db, current_user)
 
 
 @router.get("/my/created", response_model=list[ActivityResponse])
@@ -134,7 +174,7 @@ def my_created_activities(
     current_user: User = Depends(get_current_user),
 ):
     activities = get_my_activities(current_user, db)
-    return serialize_activities(activities, db)
+    return serialize_activities(activities, db, current_user)
 
 
 @router.get("/my/joined/count", response_model=int)
@@ -151,25 +191,26 @@ def my_joined_activities(
     current_user: User = Depends(get_current_user),
 ):
     activities = get_my_joined_activities(current_user, db)
-    return serialize_activities(activities, db)
+    return serialize_activities(activities, db, current_user)
 
 
 @router.get("/{activity_id}", response_model=ActivityResponse)
 def activity_details(
     activity_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     activity = get_activity(activity_id, db, include_participants=True)
 
     if not activity:
         raise HTTPException(404, "Activity not found")
 
-    counts = get_confirmed_participant_counts([activity], db)
-    return serialize_activity(
-        activity,
-        counts.get(activity.id, 0),
+    return serialize_activities(
+        [activity],
+        db,
+        current_user,
         include_crew=True,
-    )
+    )[0]
 
 
 @router.patch("/{activity_id}", response_model=ActivityResponse)

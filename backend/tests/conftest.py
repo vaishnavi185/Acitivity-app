@@ -114,17 +114,21 @@ def create_user(client: TestClient) -> Callable[..., dict[str, Any]]:
 
 
 @pytest.fixture
-def create_category(client: TestClient) -> Callable[..., dict[str, Any]]:
+def create_category(
+    client: TestClient,
+    create_user: Callable[..., dict[str, Any]],
+) -> Callable[..., dict[str, Any]]:
     def _create_category(
         name: str = "Outdoor Sports",
         slug: str = "outdoor-sports",
     ) -> dict[str, Any]:
+        user = create_user()
         response = client.post(
             "/categories/",
+            headers=user["headers"],
             json={"name": name, "slug": slug, "icon_name": "Activity"},
         )
         assert response.status_code == 201, response.text
         return response.json()
 
     return _create_category
-

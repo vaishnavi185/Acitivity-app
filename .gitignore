@@ -14,3 +14,5 @@ __pycache__/
 # Test and tool caches
 .pytest_cache/
 .mypy_cache/
+# Local runtime validation report
+runtime-validation-report.md

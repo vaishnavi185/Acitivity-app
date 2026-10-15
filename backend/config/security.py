@@ -59,20 +59,15 @@ def create_access_token(data: dict) -> str:
 
 # 2. Yahan HTTPBearer initialize karo
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> User:
+def _get_user_from_token(token: str, db: Session) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
-    # 3. Yahan credentials object se direct token extract karo
-    token = credentials.credentials
 
     try:
         payload = jwt.decode(
@@ -95,3 +90,19 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    return _get_user_from_token(credentials.credentials, db)
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    return _get_user_from_token(credentials.credentials, db)

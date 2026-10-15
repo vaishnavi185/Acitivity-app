@@ -69,7 +69,7 @@ export function Header({
             </div>
             <div className="hidden sm:block leading-tight">
               <span className="text-lg font-black tracking-tight text-neutral-900 block">
-                GatherUp
+             ActiVibe
               </span>
               <span className="text-[9px] font-bold tracking-wider uppercase text-neutral-400 block -mt-0.5">
                 Social Discovery

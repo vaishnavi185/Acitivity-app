@@ -74,3 +74,5 @@ class ActivityResponse(BaseModel):
     total_group_size: int
     likes_count: int
     crew: list[ActivityCrewMemberResponse] = Field(default_factory=list)
+    is_liked: bool = False
+    is_bookmarked: bool = False

@@ -173,3 +173,193 @@ def test_activity_validation_auth_and_missing_ids(
         f"/activities/{missing_activity}/like",
         headers=owner["headers"],
     ).status_code == 404
+
+
+def test_feed_and_details_return_persisted_interaction_state(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    host = create_user()
+    participant = create_user()
+    other_user = create_user()
+    category = create_category()
+    created = client.post(
+        "/activities/",
+        headers=host["headers"],
+        json=activity_payload(category["id"], title="Interaction State Check"),
+    )
+    activity_id = created.json()["id"]
+
+    assert client.post(
+        f"/activities/{activity_id}/like",
+        headers=participant["headers"],
+    ).status_code == 200
+    assert client.post(
+        f"/activities/{activity_id}/bookmark",
+        headers=participant["headers"],
+    ).status_code == 200
+
+    participant_feed = client.get(
+        "/activities/",
+        headers=participant["headers"],
+    )
+    participant_item = next(
+        item for item in participant_feed.json() if item["id"] == activity_id
+    )
+    assert participant_item["is_liked"] is True
+    assert participant_item["is_bookmarked"] is True
+
+    participant_details = client.get(
+        f"/activities/{activity_id}",
+        headers=participant["headers"],
+    )
+    assert participant_details.json()["is_liked"] is True
+    assert participant_details.json()["is_bookmarked"] is True
+
+    other_feed = client.get("/activities/", headers=other_user["headers"])
+    other_item = next(
+        item for item in other_feed.json() if item["id"] == activity_id
+    )
+    assert other_item["is_liked"] is False
+    assert other_item["is_bookmarked"] is False
+    assert client.get(
+        "/activities/",
+        headers={"Authorization": "Bearer malformed-token"},
+    ).status_code == 401
+
+
+def test_complete_two_user_activity_lifecycle(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    owner = create_user()
+    participant = create_user()
+    category = create_category()
+
+    profile = client.put(
+        "/users/me",
+        headers=owner["headers"],
+        json={"bio": "Hosting weekend activities"},
+    )
+    assert profile.status_code == 200
+
+    payload = activity_payload(category["id"], title="Lifecycle Hike")
+    created = client.post("/activities/", headers=owner["headers"], json=payload)
+    assert created.status_code == 201
+    activity_id = created.json()["id"]
+
+    discovered = client.get(
+        "/activities/",
+        params={"search": "lifecycle", "category_id": category["id"]},
+    )
+    assert [item["id"] for item in discovered.json()] == [activity_id]
+
+    assert client.post(
+        f"/activities/{activity_id}/join",
+        headers=participant["headers"],
+    ).status_code == 200
+    assert client.post(
+        f"/activities/{activity_id}/like",
+        headers=participant["headers"],
+    ).json()["is_liked"] is True
+    assert client.post(
+        f"/activities/{activity_id}/bookmark",
+        headers=participant["headers"],
+    ).json()["is_bookmarked"] is True
+
+    participant_dashboard = client.get(
+        "/dashboard/activities",
+        params={"type": "joined"},
+        headers=participant["headers"],
+    )
+    assert [item["id"] for item in participant_dashboard.json()] == [activity_id]
+    participant_feed = client.get(
+        "/activities/",
+        headers=participant["headers"],
+    )
+    persisted = next(
+        item for item in participant_feed.json() if item["id"] == activity_id
+    )
+    assert persisted["joined_count"] == 1
+    assert persisted["is_liked"] is True
+    assert persisted["is_bookmarked"] is True
+
+    assert client.post(
+        f"/activities/{activity_id}/leave",
+        headers=participant["headers"],
+    ).status_code == 200
+    assert client.post(
+        f"/activities/{activity_id}/like",
+        headers=participant["headers"],
+    ).json()["is_liked"] is False
+    assert client.post(
+        f"/activities/{activity_id}/bookmark",
+        headers=participant["headers"],
+    ).json()["is_bookmarked"] is False
+
+    changed = client.patch(
+        f"/activities/{activity_id}",
+        headers=owner["headers"],
+        json={"title": "Updated Lifecycle Hike"},
+    )
+    assert changed.status_code == 200
+    assert changed.json()["title"] == "Updated Lifecycle Hike"
+    assert client.delete(
+        f"/activities/{activity_id}",
+        headers=owner["headers"],
+    ).status_code == 204
+
+    assert client.get(f"/activities/{activity_id}").status_code == 404
+    assert all(
+        item["id"] != activity_id
+        for item in client.get(
+            "/dashboard/activities",
+            params={"type": "joined"},
+            headers=participant["headers"],
+        ).json()
+    )
+
+
+def test_activity_capacity_and_host_join_rules(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    host = create_user()
+    first = create_user()
+    second = create_user()
+    category = create_category()
+    payload = {
+        **activity_payload(category["id"], title="Single Spot Activity"),
+        "additional_needed": 1,
+    }
+    created = client.post("/activities/", headers=host["headers"], json=payload)
+    activity_id = created.json()["id"]
+
+    assert client.post(
+        f"/activities/{activity_id}/join",
+        headers=host["headers"],
+    ).status_code == 409
+    first_join = client.post(
+        f"/activities/{activity_id}/join",
+        headers=first["headers"],
+    )
+    assert first_join.status_code == 200
+    assert first_join.json()["available_slots"] == 0
+    assert client.post(
+        f"/activities/{activity_id}/join",
+        headers=second["headers"],
+    ).status_code == 409
+
+    assert client.post(
+        f"/activities/{activity_id}/leave",
+        headers=first["headers"],
+    ).status_code == 200
+    rejoined = client.post(
+        f"/activities/{activity_id}/join",
+        headers=second["headers"],
+    )
+    assert rejoined.status_code == 200
+    assert rejoined.json()["joined_count"] == 1

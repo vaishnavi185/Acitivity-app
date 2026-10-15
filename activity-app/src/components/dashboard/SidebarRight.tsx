@@ -26,50 +26,7 @@ export function SidebarRight({
   return (
     <aside className="w-full lg:w-72 flex flex-col gap-5 flex-shrink-0">
       {/* 1. Trending Circles */}
-      <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-neutral-900 tracking-tight">Trending Circles</h3>
-          <button
-            type="button"
-            onClick={onSeeAllCircles}
-            disabled={!onSeeAllCircles}
-            title={!onSeeAllCircles ? 'The backend does not currently provide a circles endpoint.' : undefined}
-            className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            See all
-          </button>
-        </div>
-
-        {circles.length > 0 ? (
-          <div className="space-y-3">
-            {circles.map((circle) => (
-              <button
-                key={circle.id}
-                type="button"
-                onClick={() => onCircleClick?.(circle.id)}
-                className="w-full flex items-center justify-between p-2 rounded-2xl hover:bg-neutral-50 transition-all group text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-base flex-shrink-0 group-hover:scale-105 transition-transform">
-                    {circle.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-neutral-800 truncate group-hover:text-orange-600 transition-colors">
-                      {circle.name}
-                    </p>
-                    <p className="text-[11px] text-neutral-400">{circle.members}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2" />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-2xl bg-neutral-50 p-3 text-xs text-neutral-500">
-            Circles aren’t available from the activity API yet.
-          </p>
-        )}
-      </div>
+      
 
       {/* 2. Spontaneous Plan Card */}
       <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col items-center text-center">

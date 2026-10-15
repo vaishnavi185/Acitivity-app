@@ -99,3 +99,45 @@ def test_dashboard_requires_auth_and_valid_bucket(
         params={"type": "everything"},
         headers=user["headers"],
     ).status_code == 422
+
+
+def test_dashboard_never_returns_another_users_activities(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    owner = create_user()
+    participant = create_user()
+    unrelated = create_user()
+    category = create_category()
+    created = client.post(
+        "/activities/",
+        headers=owner["headers"],
+        json=activity_payload(category["id"], title="Private Dashboard Check"),
+    )
+    activity_id = created.json()["id"]
+
+    assert client.post(
+        f"/activities/{activity_id}/join",
+        headers=participant["headers"],
+    ).status_code == 200
+
+    owner_created = client.get(
+        "/dashboard/activities",
+        params={"type": "created"},
+        headers=owner["headers"],
+    )
+    participant_joined = client.get(
+        "/dashboard/activities",
+        params={"type": "joined"},
+        headers=participant["headers"],
+    )
+    unrelated_dashboard = client.get(
+        "/dashboard/activities",
+        params={"type": "created"},
+        headers=unrelated["headers"],
+    )
+
+    assert [activity["id"] for activity in owner_created.json()] == [activity_id]
+    assert [activity["id"] for activity in participant_joined.json()] == [activity_id]
+    assert unrelated_dashboard.json() == []

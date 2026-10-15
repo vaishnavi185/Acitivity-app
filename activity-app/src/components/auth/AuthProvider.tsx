@@ -14,7 +14,7 @@ import { Toast } from "./AuthToast";
 import { confirmAction } from "@/src/lib/confirmAction";
 
 type ToastType = "success" | "error";
-type AuthStatus = "checking" | "authenticated" | "unauthenticated";
+type AuthStatus = "authenticated" | "unauthenticated";
 
 interface AuthContextValue {
   notify: (message: string, type?: ToastType) => void;
@@ -34,7 +34,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [status, setStatus] = useState<AuthStatus>("checking");
+  const [status, setStatus] = useState<AuthStatus>("unauthenticated");
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(
     null
   );
@@ -62,10 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isAuthPage = pathname === "/login" || pathname === "/register";
     const token = localStorage.getItem("token");
 
-    setStatus("checking");
-
     if (!token) {
-      setStatus("unauthenticated");
       if (!isAuthPage) {
         router.replace("/login");
       }

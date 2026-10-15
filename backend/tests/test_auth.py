@@ -82,3 +82,51 @@ def test_registration_schema_and_protected_route_rejections(
 
     missing_user_auth = client.get("/auth/me")
     assert missing_user_auth.status_code == 401
+
+
+def test_profiles_are_user_scoped_and_passwords_are_hashed(
+    client: TestClient,
+    create_user,
+) -> None:
+    from db.database import SessionLocal
+    from models.user import User
+
+    first = create_user()
+    second = create_user()
+
+    with SessionLocal() as db:
+        stored_user = db.query(User).filter(User.id == first["user"]["id"]).one()
+        assert stored_user.hashed_password != first["password"]
+        assert stored_user.hashed_password.startswith("$2")
+
+    update = client.put(
+        "/users/me",
+        headers=second["headers"],
+        json={"full_name": "Private Profile Update", "bio": "Only for user two"},
+    )
+    assert update.status_code == 200
+    assert client.get("/users/me", headers=first["headers"]).json()[
+        "full_name"
+    ] == first["user"]["full_name"]
+    assert client.get("/users/me", headers=second["headers"]).json()[
+        "full_name"
+    ] == "Private Profile Update"
+
+
+def test_database_failure_does_not_expose_internal_details(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    import main
+
+    class FailingEngine:
+        def connect(self):
+            raise RuntimeError("postgres://private-user:private-password@db-host")
+
+    monkeypatch.setattr(main, "engine", FailingEngine())
+
+    response = client.get("/test-db")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database unavailable"}
+    assert "private-password" not in response.text

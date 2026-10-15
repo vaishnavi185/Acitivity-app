@@ -2,8 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from config.security import get_current_user
 from db.database import get_db
 from models.category import Category
+from models.user import User
 from schemas.category import (
     CategoryCreate,
     CategoryUpdate,
@@ -33,6 +35,7 @@ def serialize_category(category: Category):
 def create_category_api(
     data: CategoryCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         category = create_category(data, db)
@@ -61,6 +64,7 @@ def update_category_api(
     category_id: int,
     data: CategoryUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     category = get_category_by_id(category_id, db)
 
@@ -74,7 +78,11 @@ def update_category_api(
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_category_api(category_id: int, db: Session = Depends(get_db)):
+def delete_category_api(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     category = get_category_by_id(category_id, db)
 
     if not category:

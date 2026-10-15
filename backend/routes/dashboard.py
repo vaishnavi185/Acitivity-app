@@ -32,4 +32,4 @@ def dashboard_activities(
     current_user: User = Depends(get_current_user),
 ):
     activities = get_dashboard_activities(current_user, activity_type, db)
-    return serialize_activities(activities, db)
+    return serialize_activities(activities, db, current_user)

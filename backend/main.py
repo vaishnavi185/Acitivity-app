@@ -1,5 +1,8 @@
 
+import logging
+
 from fastapi import FastAPI
+from fastapi import HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -13,6 +16,8 @@ from models import (
     ActivityBookmark,
 )
 from routes import api_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Activity App API")
 
@@ -43,8 +48,9 @@ def test_db():
 
         return {"database": "Connected successfully!"}
 
-    except Exception as e:
-        return {
-            "database": "Connection failed",
-            "error": str(e),
-        }
+    except Exception:
+        logger.exception("Database connectivity check failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable",
+        ) from None
