@@ -62,3 +62,14 @@ export function getFollowers(
 ): Promise<BuddyListResponse> {
   return authFetch(`/buddies/${userId}/followers?limit=${limit}&offset=${offset}`);
 }
+
+export function getMyBuddies(
+  limit = 20,
+  offset = 0
+): Promise<BuddyListResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return authFetch(`/buddies/me?${params.toString()}`);
+}

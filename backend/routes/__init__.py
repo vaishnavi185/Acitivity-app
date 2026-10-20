@@ -18,3 +18,6 @@ api_router.include_router(dashboard_router)
 
 from routes.buddy import router as buddy_router
 api_router.include_router(buddy_router)
+
+from routes.geocoding import router as geocoding_router
+api_router.include_router(geocoding_router)

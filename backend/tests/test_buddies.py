@@ -142,6 +142,57 @@ def test_buddies_router_is_registered_and_lists_are_paginated(
     assert followers.json()["items"][0]["user"]["id"] == owner["user"]["id"]
 
 
+def test_current_user_buddies_lists_only_authenticated_users_buddies(
+    client: TestClient,
+    create_user,
+) -> None:
+    owner = create_user(full_name="Owner")
+    buddy = create_user(full_name="Buddy")
+    other_user = create_user(full_name="Other User")
+
+    followed = client.post(
+        f"/buddies/{buddy['user']['id']}",
+        headers=owner["headers"],
+    )
+    assert followed.status_code == 200
+
+    response = client.get("/buddies/me", headers=owner["headers"])
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["user"]["id"] == buddy["user"]["id"]
+    assert response.json()["items"][0]["user"]["full_name"] == "Buddy"
+    assert response.json()["items"][0]["user"]["id"] != other_user["user"]["id"]
+    assert "email" not in response.json()["items"][0]["user"]
+
+
+def test_current_user_buddies_supports_pagination_and_requires_auth(
+    client: TestClient,
+    create_user,
+) -> None:
+    owner = create_user(full_name="Owner")
+    buddies = [
+        create_user(full_name=f"Buddy {index}")
+        for index in range(3)
+    ]
+
+    for buddy in buddies:
+        response = client.post(
+            f"/buddies/{buddy['user']['id']}",
+            headers=owner["headers"],
+        )
+        assert response.status_code == 200
+
+    paginated = client.get(
+        "/buddies/me?limit=2&offset=1",
+        headers=owner["headers"],
+    )
+    assert paginated.status_code == 200
+    assert paginated.json()["total"] == 3
+    assert len(paginated.json()["items"]) == 2
+
+    assert client.get("/buddies/me").status_code == 401
+
+
 def test_buddy_lists_reject_unknown_users(client: TestClient, create_user) -> None:
     member = create_user()
     unknown_id = "00000000-0000-0000-0000-000000000000"

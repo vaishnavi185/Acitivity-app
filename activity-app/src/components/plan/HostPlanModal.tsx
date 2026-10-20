@@ -1,15 +1,37 @@
 "use client";
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   X, 
   MapPin, 
+  MapPinned,
   Info, 
   Check, 
   ChevronDown 
 } from 'lucide-react';
 import type { Category } from '@/service/categoryService';
 import { useAuth } from '../auth/AuthProvider';
+
+interface LocationSelection {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
+const LocationMapPickerModal = dynamic(
+  () => import('./LocationMapPickerModal').then((module) => module.LocationMapPickerModal),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="status">
+        <div className="rounded-2xl bg-white px-5 py-4 text-sm font-medium text-neutral-700 shadow-xl">
+          Loading map…
+        </div>
+      </div>
+    ),
+  }
+);
 
 export interface NewPlanFormData {
   title: string;
@@ -84,6 +106,11 @@ export function HostPlanModal({
     coverImage: COVER_OPTIONS[0].url,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -92,6 +119,18 @@ export function HostPlanModal({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'location') {
+      setSelectedCoordinates(null);
+    }
+  };
+
+  const handleLocationConfirm = (selection: LocationSelection) => {
+    setFormData((previous) => ({ ...previous, location: selection.address }));
+    setSelectedCoordinates({
+      latitude: selection.latitude,
+      longitude: selection.longitude,
+    });
+    setIsLocationPickerOpen(false);
   };
 
   const incrementCount = () => {
@@ -257,20 +296,30 @@ export function HostPlanModal({
             <label className="block text-xs font-bold text-neutral-900 mb-2">
               Meeting Location <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-                <MapPin className="w-4 h-4" />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  minLength={2}
+                  required
+                  placeholder="Venue name, landmark, and area (e.g. Play9 Arena, Indiranagar)"
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                />
               </div>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                minLength={2}
-                required
-                placeholder="Venue name, landmark, and area (e.g. Play9 Arena, Indiranagar)"
-                className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm placeholder-neutral-400 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-              />
+              <button
+                type="button"
+                onClick={() => setIsLocationPickerOpen(true)}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 transition-colors hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <MapPinned className="h-4 w-4" />
+                Choose on Map
+              </button>
             </div>
           </div>
 
@@ -417,6 +466,17 @@ export function HostPlanModal({
           </div>
         </form>
       </div>
+      {isLocationPickerOpen && (
+        <LocationMapPickerModal
+          initialSelection={
+            selectedCoordinates
+              ? { ...selectedCoordinates, address: formData.location }
+              : null
+          }
+          onCancel={() => setIsLocationPickerOpen(false)}
+          onConfirm={handleLocationConfirm}
+        />
+      )}
     </div>
   );
 }

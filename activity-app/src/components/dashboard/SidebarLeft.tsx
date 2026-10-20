@@ -6,6 +6,7 @@ import {
   Compass, 
   LayoutGrid, 
   User, 
+  UsersRound,
   TrendingUp, 
   Sparkles 
 } from 'lucide-react';
@@ -27,6 +28,7 @@ export function SidebarLeft({
   const navItems = [
     { href: '/dashboard', label: 'Explore Plans', icon: Compass },
     { href: '/dashboard/my-activities', label: 'My Activities', icon: LayoutGrid },
+    { href: '/dashboard/my-buddies', label: 'My Buddies', icon: UsersRound },
     { href: '/dashboard/profile', label: 'Profile & Saved', icon: User },
   ];
 
@@ -36,7 +38,9 @@ export function SidebarLeft({
       <div className="bg-white rounded-3xl p-3 border border-neutral-200/80 shadow-2xs space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = item.href === '/dashboard/profile'
+            ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+            : pathname === item.href;
           return (
             <Link
               key={item.href}

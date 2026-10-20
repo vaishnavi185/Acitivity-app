@@ -302,9 +302,10 @@ export function ActivityDetailModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {activity.crew.map((member) => (
-                    <div
+                    <Link
                       key={member.id}
-                      className="p-3 rounded-2xl bg-[#FAF8F5] border border-neutral-200/80 flex items-center gap-3"
+                      href={`/dashboard/profile/${encodeURIComponent(member.id)}`}
+                      className="p-3 rounded-2xl bg-[#FAF8F5] border border-neutral-200/80 flex items-center gap-3 hover:border-orange-300 focus-visible:outline-2 focus-visible:outline-orange-500"
                     >
                       {member.avatarUrl.trim() ? (
                         <img
@@ -331,7 +332,7 @@ export function ActivityDetailModal({
                           {member.location}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>

@@ -3,6 +3,7 @@ import React, { Suspense } from 'react';
 import AppShell from '@/src/components/dashboard/AppShell';
 import { AuthProvider } from '@/src/components/auth/AuthProvider';
 import './globals.css';
+import "leaflet/dist/leaflet.css";
 
 export const metadata: Metadata = {
   title: 'GatherUp',

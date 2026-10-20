@@ -43,6 +43,17 @@ def buddy_status(
 
 
 # ---------- Lists ----------
+@router.get("/me", response_model=BuddyListOut)
+def current_user_buddies(
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    """Return the buddies followed by the authenticated user."""
+    return buddy_service.list_buddies(db, me.id, limit, offset)
+
+
 @router.get("/{user_id}/buddies", response_model=BuddyListOut)
 def user_buddies(
     user_id: uuid.UUID,
