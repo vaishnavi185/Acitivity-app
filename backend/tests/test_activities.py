@@ -89,6 +89,7 @@ def test_join_leave_likes_bookmarks_and_ownership(
     assert joined.status_code == 200
     assert joined.json()["joined_count"] == 1
     assert joined.json()["available_slots"] == 2
+    assert joined.json()["is_joined"] is True
     assert client.get("/activities/my/joined", headers=attendee["headers"]).json()[0]["id"] == activity_id
     assert client.get("/activities/my/joined/count", headers=attendee["headers"]).json() == 1
     assert client.post(
@@ -133,6 +134,7 @@ def test_join_leave_likes_bookmarks_and_ownership(
     )
     assert left.status_code == 200
     assert left.json()["joined_count"] == 0
+    assert left.json()["is_joined"] is False
     assert client.get("/activities/my/joined", headers=attendee["headers"]).json() == []
 
 

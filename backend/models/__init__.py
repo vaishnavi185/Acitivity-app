@@ -5,3 +5,4 @@ from models.activity import Activity
 from models.activity_participant import ActivityParticipant
 from models.activity_like import ActivityLike
 from models.activity_bookmark import ActivityBookmark
+from models.buddy import Buddy

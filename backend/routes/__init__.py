@@ -15,3 +15,6 @@ api_router.include_router(users_router)
 from routes.dashboard import router as dashboard_router
 
 api_router.include_router(dashboard_router)
+
+from routes.buddy import router as buddy_router
+api_router.include_router(buddy_router)

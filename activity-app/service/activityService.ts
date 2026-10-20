@@ -34,6 +34,7 @@ export interface Activity {
   }[];
   is_liked?: boolean;
   is_bookmarked?: boolean;
+  is_joined?: boolean;
 }
 
 export interface ActivityPayload {

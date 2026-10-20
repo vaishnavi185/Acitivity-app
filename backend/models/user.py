@@ -45,3 +45,15 @@ class User(Base):
     participations = relationship("ActivityParticipant", back_populates="user")
     likes = relationship("ActivityLike", back_populates="user")
     bookmarks = relationship("ActivityBookmark", back_populates="user")
+    following_buddies = relationship(
+        "Buddy",
+        foreign_keys="Buddy.follower_id",
+        back_populates="follower",
+        cascade="all, delete-orphan",
+    )
+    follower_buddies = relationship(
+        "Buddy",
+        foreign_keys="Buddy.following_id",
+        back_populates="following",
+        cascade="all, delete-orphan",
+    )

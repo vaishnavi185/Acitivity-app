@@ -14,8 +14,9 @@ from models import (
     ActivityParticipant,
     ActivityLike,
     ActivityBookmark,
+    Buddy,
 )
-from routes import api_router
+from routes import api_router, profile
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ Base.metadata.create_all(bind=engine)
 
 # Register all API routes
 app.include_router(api_router)
+app.include_router(profile.router)
 
 
 @app.get("/")

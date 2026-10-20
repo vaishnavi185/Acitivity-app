@@ -210,6 +210,8 @@ export function ProfileSavedView() {
           location={profileFormData.location}
           email={profileFormData.email}
           bio={profileFormData.bio}
+          userId={profile.id}
+          isOwnProfile
           onEditProfile={() => void handleEditProfile()}
         />
 

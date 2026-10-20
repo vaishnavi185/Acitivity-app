@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { MapPin, Users, Calendar, Clock, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export interface ActivityPlan {
   id: string;
+  hostId: string;
   title: string;
   category: string;
   environment: 'Indoor' | 'Outdoor';
@@ -73,9 +75,13 @@ export function ActivityCard({
                 {plan.hostName.slice(0, 1).toUpperCase()}
               </span>
             )}
-            <span className="text-xs font-medium drop-shadow-sm">
+            <Link
+              href={`/dashboard/profile/${encodeURIComponent(plan.hostId)}`}
+              onClick={(event) => event.stopPropagation()}
+              className="text-xs font-medium drop-shadow-sm hover:underline"
+            >
               Hosted by <strong className="font-bold">{plan.hostName}</strong>
-            </span>
+            </Link>
           </div>
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md text-xs font-semibold">

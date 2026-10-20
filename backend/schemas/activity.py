@@ -76,3 +76,4 @@ class ActivityResponse(BaseModel):
     crew: list[ActivityCrewMemberResponse] = Field(default_factory=list)
     is_liked: bool = False
     is_bookmarked: bool = False
+    is_joined: bool = False

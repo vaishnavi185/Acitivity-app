@@ -25,6 +25,7 @@ export function formatActivityTime(value: string) {
 export function toActivityPlan(activity: Activity): ActivityPlan {
   return {
     id: activity.id,
+    hostId: activity.host_id,
     title: activity.title,
     category: activity.category,
     environment: activity.environment === "indoor" ? "Indoor" : "Outdoor",
@@ -62,6 +63,7 @@ export function toActivityDetail(
     meetingSpot: activity.location,
     description: activity.description,
     host: {
+      id: activity.host.id,
       name: activity.host.name,
       location: activity.host.location ?? "",
       avatarUrl: activity.host.avatar_url ?? "",

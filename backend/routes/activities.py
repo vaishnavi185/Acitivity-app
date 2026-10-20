@@ -10,6 +10,8 @@ from models.user import User
 from models.activity import Activity
 from models.activity_bookmark import ActivityBookmark
 from models.activity_like import ActivityLike
+from models.activity_participant import ActivityParticipant
+from models.enums import ParticipantStatus
 from schemas.activity import ActivityCreate, ActivityResponse, ActivityUpdate
 from service.activity_service import (
     ActivityConflictError,
@@ -42,6 +44,7 @@ def serialize_activity(
     include_crew: bool = False,
     is_liked: bool = False,
     is_bookmarked: bool = False,
+    is_joined: bool = False,
 ):
     crew = []
     if include_crew:
@@ -84,6 +87,7 @@ def serialize_activity(
         "crew": crew,
         "is_liked": is_liked,
         "is_bookmarked": is_bookmarked,
+        "is_joined": is_joined,
     }
 
 
@@ -96,6 +100,7 @@ def serialize_activities(
     counts = get_confirmed_participant_counts(activities, db)
     liked_ids = set()
     bookmarked_ids = set()
+    joined_ids = set()
     if current_user and activities:
         activity_ids = [activity.id for activity in activities]
         liked_ids = {
@@ -116,6 +121,16 @@ def serialize_activities(
             )
             .all()
         }
+        joined_ids = {
+            activity_id
+            for (activity_id,) in db.query(ActivityParticipant.activity_id)
+            .filter(
+                ActivityParticipant.user_id == current_user.id,
+                ActivityParticipant.activity_id.in_(activity_ids),
+                ActivityParticipant.status == ParticipantStatus.CONFIRMED,
+            )
+            .all()
+        }
     return [
         serialize_activity(
             activity,
@@ -123,6 +138,7 @@ def serialize_activities(
             include_crew=include_crew,
             is_liked=activity.id in liked_ids,
             is_bookmarked=activity.id in bookmarked_ids,
+            is_joined=activity.id in joined_ids,
         )
         for activity in activities
     ]
@@ -243,7 +259,7 @@ def edit_activity(
         raise HTTPException(409, str(error)) from error
 
     counts = get_confirmed_participant_counts([updated], db)
-    return serialize_activity(updated, counts.get(updated.id, 0))
+    return serialize_activities([updated], db, current_user)[0]
 
 
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -301,8 +317,7 @@ def join_activity_api(
     except ActivityConflictError as error:
         raise HTTPException(409, str(error)) from error
 
-    counts = get_confirmed_participant_counts([activity], db)
-    return serialize_activity(activity, counts.get(activity.id, 0))
+    return serialize_activities([activity], db, current_user)[0]
 
 
 @router.post("/{activity_id}/leave", response_model=ActivityResponse)
@@ -319,5 +334,4 @@ def leave_activity_api(
     except ActivityConflictError as error:
         raise HTTPException(409, str(error)) from error
 
-    counts = get_confirmed_participant_counts([activity], db)
-    return serialize_activity(activity, counts.get(activity.id, 0))
+    return serialize_activities([activity], db, current_user)[0]

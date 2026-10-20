@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   X, 
   Calendar, 
@@ -36,6 +37,7 @@ export interface ActivityDetailData {
   meetingSpot: string;
   description: string;
   host: {
+    id: string;
     name: string;
     location: string;
     avatarUrl: string;
@@ -277,7 +279,12 @@ export function ActivityDetailModal({
                   )}
                   <div>
                     <h4 className="text-xs sm:text-sm font-bold text-neutral-900">
+                      <Link
+                        href={`/dashboard/profile/${encodeURIComponent(activity.host.id)}`}
+                        className="hover:text-orange-600"
+                      >
                       {activity.host.name}
+                      </Link>
                     </h4>
                     <p className="text-xs text-neutral-400">{activity.host.location}</p>
                   </div>

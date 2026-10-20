@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import React from 'react';
+import React, { Suspense } from 'react';
 import AppShell from '@/src/components/dashboard/AppShell';
 import { AuthProvider } from '@/src/components/auth/AuthProvider';
 import './globals.css';
@@ -17,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <Suspense fallback={<main className="min-h-screen bg-[#FAF8F5]" aria-label="Loading application" />}>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
+        </Suspense>
       </body>
     </html>
   );
