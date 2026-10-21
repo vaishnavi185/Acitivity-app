@@ -2,13 +2,14 @@
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import type { ActivityFeedFilter } from '@/service/activityService';
 import type { Category } from '@/service/categoryService';
 
 interface FeedHeaderProps {
   selectedCategory?: string;
   onSelectCategory?: (category: string) => void;
-  selectedFilterType?: 'all' | 'indoor' | 'outdoor';
-  onSelectFilterType?: (type: 'all' | 'indoor' | 'outdoor') => void;
+  selectedFilterType?: ActivityFeedFilter;
+  onSelectFilterType?: (type: ActivityFeedFilter) => void;
   showingCount?: number;
   totalCount?: number;
   categories?: Category[];
@@ -63,23 +64,29 @@ export function FeedHeader({
         })}
       </div>
 
-      {/* 3. Sub-filter Pills (All / Indoor / Outdoor) & Count */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-2">
-          {(['all', 'indoor', 'outdoor'] as const).map((type) => {
+      {/* 3. Sub-filter Pills & Count */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {([
+            { type: 'all', label: 'All' },
+            { type: 'indoor', label: 'Indoor' },
+            { type: 'outdoor', label: 'Outdoor' },
+            { type: 'buddies', label: 'Posted by buddy' },
+          ] as const).map(({ type, label }) => {
             const isActive = selectedFilterType === type;
             return (
               <button
                 key={type}
                 type="button"
                 onClick={() => onSelectFilterType?.(type)}
-                className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all cursor-pointer ${
+                aria-pressed={isActive}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                   isActive
                     ? 'bg-neutral-900 text-white shadow-2xs'
                     : 'text-neutral-500 hover:text-neutral-800'
                 }`}
               >
-                {type}
+                {label}
               </button>
             );
           })}

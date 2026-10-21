@@ -54,6 +54,94 @@ def test_activity_create_filter_detail_update_delete(
     assert client.get(f"/activities/{activity_id}").status_code == 404
 
 
+def test_feed_filters_activities_posted_by_followed_buddies(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    current_user = create_user(full_name="Current User")
+    followed_buddy = create_user(full_name="Followed Buddy")
+    unfollowed_user = create_user(full_name="Unfollowed User")
+    other_viewer = create_user(full_name="Other Viewer")
+    other_viewer_buddy = create_user(full_name="Other Viewer's Buddy")
+    category = create_category()
+
+    own_activity = client.post(
+        "/activities/",
+        headers=current_user["headers"],
+        json=activity_payload(category["id"], title="My own activity"),
+    )
+    buddy_payload = activity_payload(category["id"], title="Buddy activity")
+    buddy_payload["environment"] = "indoor"
+    buddy_activity = client.post(
+        "/activities/",
+        headers=followed_buddy["headers"],
+        json=buddy_payload,
+    )
+    other_activity = client.post(
+        "/activities/",
+        headers=unfollowed_user["headers"],
+        json=activity_payload(category["id"], title="Other activity"),
+    )
+    other_viewer_activity = client.post(
+        "/activities/",
+        headers=other_viewer_buddy["headers"],
+        json=activity_payload(category["id"], title="Other viewer buddy activity"),
+    )
+    assert buddy_activity.status_code == 201
+    assert other_activity.status_code == 201
+    assert other_viewer_activity.status_code == 201
+    assert own_activity.status_code == 201
+
+    followed = client.post(
+        f"/buddies/{followed_buddy['user']['id']}",
+        headers=current_user["headers"],
+    )
+    assert followed.status_code == 200
+    buddy_joined_other_activity = client.post(
+        f"/activities/{other_activity.json()['id']}/join",
+        headers=followed_buddy["headers"],
+    )
+    assert buddy_joined_other_activity.status_code == 200
+    other_followed = client.post(
+        f"/buddies/{other_viewer_buddy['user']['id']}",
+        headers=other_viewer["headers"],
+    )
+    assert other_followed.status_code == 200
+
+    filtered = client.get(
+        "/activities/",
+        params={"posted_by_buddies": True},
+        headers=current_user["headers"],
+    )
+    assert filtered.status_code == 200
+    assert [item["id"] for item in filtered.json()] == [buddy_activity.json()["id"]]
+    assert filtered.json()[0]["host_id"] == followed_buddy["user"]["id"]
+    assert own_activity.json()["id"] not in [item["id"] for item in filtered.json()]
+    assert other_viewer_activity.json()["id"] not in [
+        item["id"] for item in filtered.json()
+    ]
+
+    combined_filters = client.get(
+        "/activities/",
+        params={
+            "posted_by_buddies": True,
+            "environment": "indoor",
+            "search": "Buddy activity",
+        },
+        headers=current_user["headers"],
+    )
+    assert combined_filters.status_code == 200
+    assert [item["id"] for item in combined_filters.json()] == [
+        buddy_activity.json()["id"]
+    ]
+
+    assert client.get(
+        "/activities/",
+        params={"posted_by_buddies": True},
+    ).status_code == 401
+
+
 def test_join_leave_likes_bookmarks_and_ownership(
     client: TestClient,
     create_user,

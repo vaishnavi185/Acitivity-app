@@ -168,16 +168,21 @@ def list_activities(
     search: str | None = Query(default=None, min_length=1, max_length=200),
     category_id: int | None = Query(default=None),
     environment: str | None = Query(default=None, pattern="^(indoor|outdoor)$"),
+    posted_by_buddies: bool = Query(default=False),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
+    if posted_by_buddies and current_user is None:
+        raise HTTPException(401, "Authentication required")
+
     activities = get_activities(
         db,
         category_id=category_id,
         environment=environment,
         search=search,
+        buddy_user_id=current_user.id if posted_by_buddies and current_user else None,
         skip=skip,
         limit=limit,
     )

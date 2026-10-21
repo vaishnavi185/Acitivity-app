@@ -1,9 +1,12 @@
 
-from sqlalchemy import func
+import uuid
+
+from sqlalchemy import exists, func
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from models.activity import Activity
 from models.activity_participant import ActivityParticipant
+from models.buddy import Buddy
 from models.category import Category
 from models.enums import IndoorOutdoorType, ParticipantStatus
 from schemas.activity import ActivityCreate, ActivityUpdate
@@ -47,6 +50,7 @@ def get_activities(
     category_id: int | None = None,
     environment: str | None = None,
     search: str | None = None,
+    buddy_user_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 20,
 ):
@@ -61,6 +65,17 @@ def get_activities(
     if environment is not None:
         query = query.filter(
             Activity.environment == IndoorOutdoorType(environment)
+        )
+
+    if buddy_user_id is not None:
+        followed_host = exists().where(
+            Buddy.follower_id == buddy_user_id
+        ).where(
+            Buddy.following_id == Activity.host_id
+        )
+        query = query.filter(
+            Activity.host_id != buddy_user_id,
+            followed_host,
         )
 
     if search:

@@ -56,9 +56,12 @@ export interface ActivityFilters {
   search?: string;
   category_id?: number;
   environment?: "indoor" | "outdoor";
+  posted_by_buddies?: boolean;
   skip?: number;
   limit?: number;
 }
+
+export type ActivityFeedFilter = "all" | "indoor" | "outdoor" | "buddies";
 
 // Get all activities with optional filters
 export function getActivities(

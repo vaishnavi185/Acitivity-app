@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '@/service/AuthService';
 import {
   getActivities,
@@ -10,6 +10,7 @@ import {
   leaveActivity,
   toggleActivityBookmark,
   toggleActivityLike,
+  type ActivityFeedFilter,
   type Activity,
   type ActivityFilters,
 } from '@/service/activityService';
@@ -27,7 +28,7 @@ export default function Dashboard() {
   const { categories, currentUserId, searchQuery } = useDashboardContext();
   const { notify } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedFilterType, setSelectedFilterType] = useState<'all' | 'indoor' | 'outdoor'>('all');
+  const [selectedFilterType, setSelectedFilterType] = useState<ActivityFeedFilter>('all');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -35,6 +36,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
+  const feedRequestId = useRef(0);
+  const previousFilterType = useRef(selectedFilterType);
 
   const categoryId = categories.find((category) => category.name === selectedCategory)?.id;
   const showApiError = useCallback((error: unknown, fallback: string) => {
@@ -44,12 +47,16 @@ export default function Dashboard() {
   }, [notify]);
 
   const refreshActivities = useCallback(async () => {
+    const requestId = ++feedRequestId.current;
     setLoading(true);
     setLoadError('');
     const filters: ActivityFilters = {
       search: searchQuery.trim() || undefined,
       category_id: categoryId,
-      environment: selectedFilterType === 'all' ? undefined : selectedFilterType,
+      environment: selectedFilterType === 'indoor' || selectedFilterType === 'outdoor'
+        ? selectedFilterType
+        : undefined,
+      posted_by_buddies: selectedFilterType === 'buddies' ? true : undefined,
       limit: 100,
     };
     try {
@@ -58,6 +65,7 @@ export default function Dashboard() {
         getMyJoinedActivities(),
         getCurrentUserBookmarks(),
       ]);
+      if (requestId !== feedRequestId.current) return;
       const bookmarkedById = new Map(bookmarks.map((activity) => [activity.id, activity]));
       setActivities(results.map((activity) => {
         const bookmarked = bookmarkedById.get(activity.id);
@@ -70,22 +78,28 @@ export default function Dashboard() {
       setJoinedIds(new Set(joined.map((activity) => activity.id)));
       setBookmarkedIds(new Set(bookmarks.map((activity) => activity.id)));
     } catch (error) {
+      if (requestId !== feedRequestId.current) return;
       setLoadError(error instanceof Error ? error.message : 'Unable to load activities.');
       showApiError(error, 'Unable to load activities.');
     } finally {
-      setLoading(false);
+      if (requestId === feedRequestId.current) setLoading(false);
     }
   }, [categoryId, searchQuery, selectedFilterType, showApiError]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void refreshActivities(), 250);
+    const filterChanged = previousFilterType.current !== selectedFilterType;
+    previousFilterType.current = selectedFilterType;
+    const timer = filterChanged
+      ? undefined
+      : window.setTimeout(() => void refreshActivities(), 250);
+    if (filterChanged) void refreshActivities();
     const handleActivitiesUpdated = () => void refreshActivities();
     window.addEventListener('app:activities-updated', handleActivitiesUpdated);
     return () => {
-      window.clearTimeout(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
       window.removeEventListener('app:activities-updated', handleActivitiesUpdated);
     };
-  }, [refreshActivities]);
+  }, [refreshActivities, selectedFilterType]);
 
   const plans = useMemo(
     () => activities.map((activity) => ({
