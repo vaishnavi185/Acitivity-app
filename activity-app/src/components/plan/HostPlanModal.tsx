@@ -11,6 +11,7 @@ import {
   ChevronDown 
 } from 'lucide-react';
 import type { Category } from '@/service/categoryService';
+import { searchLocations } from '@/service/geocodingService';
 import { useAuth } from '../auth/AuthProvider';
 
 interface LocationSelection {
@@ -39,6 +40,8 @@ export interface NewPlanFormData {
   environment: 'Indoor' | 'Outdoor';
   description: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
@@ -173,12 +176,29 @@ export function HostPlanModal({
     if (!onSubmit || isSubmitting) return;
     setIsSubmitting(true);
     try {
+      let coordinates = selectedCoordinates;
+      if (!coordinates) {
+        try {
+          const [result] = await searchLocations(formData.location.trim());
+          if (!result) {
+            notify('Choose a precise meeting location so nearby activities can be shown correctly.', 'error');
+            return;
+          }
+          coordinates = { latitude: result.lat, longitude: result.lon };
+        } catch (error) {
+          notify(error instanceof Error ? error.message : 'Unable to locate this meeting place.', 'error');
+          return;
+        }
+      }
+
       await onSubmit({
         ...formData,
         categoryId,
         title: formData.title.trim(),
         description: formData.description.trim(),
         location: formData.location.trim(),
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
       });
       onClose();
     } catch {
@@ -321,6 +341,9 @@ export function HostPlanModal({
                 Choose on Map
               </button>
             </div>
+            <p className="text-xs text-neutral-500">
+              Choose on the map for the most accurate nearby activity recommendations.
+            </p>
           </div>
 
           {/* Date & Time Row */}

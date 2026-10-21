@@ -25,7 +25,14 @@ import { SidebarRight } from './SidebarRight';
 
 export default function Dashboard() {
   const openHostPlanModal = useOpenHostPlanModal();
-  const { categories, currentUserId, searchQuery } = useDashboardContext();
+  const {
+    categories,
+    currentUserId,
+    searchQuery,
+    nearbyLocation,
+    locationLoading,
+    locationError,
+  } = useDashboardContext();
   const { notify } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedFilterType, setSelectedFilterType] = useState<ActivityFeedFilter>('all');
@@ -50,6 +57,13 @@ export default function Dashboard() {
     const requestId = ++feedRequestId.current;
     setLoading(true);
     setLoadError('');
+    if (locationLoading) return;
+    if (!nearbyLocation) {
+      setActivities([]);
+      setLoadError(locationError || 'Choose a location to discover nearby activities.');
+      setLoading(false);
+      return;
+    }
     const filters: ActivityFilters = {
       search: searchQuery.trim() || undefined,
       category_id: categoryId,
@@ -57,6 +71,9 @@ export default function Dashboard() {
         ? selectedFilterType
         : undefined,
       posted_by_buddies: selectedFilterType === 'buddies' ? true : undefined,
+      near_latitude: nearbyLocation.latitude,
+      near_longitude: nearbyLocation.longitude,
+      radius_km: 25,
       limit: 100,
     };
     try {
@@ -84,7 +101,15 @@ export default function Dashboard() {
     } finally {
       if (requestId === feedRequestId.current) setLoading(false);
     }
-  }, [categoryId, searchQuery, selectedFilterType, showApiError]);
+  }, [
+    categoryId,
+    locationError,
+    locationLoading,
+    nearbyLocation,
+    searchQuery,
+    selectedFilterType,
+    showApiError,
+  ]);
 
   useEffect(() => {
     const filterChanged = previousFilterType.current !== selectedFilterType;
@@ -223,6 +248,8 @@ export default function Dashboard() {
           onSelectCategory={setSelectedCategory}
           selectedFilterType={selectedFilterType}
           onSelectFilterType={setSelectedFilterType}
+          locationLabel={nearbyLocation?.label}
+          radiusKm={25}
           showingCount={plans.length}
           totalCount={plans.length}
           categories={categories}
@@ -255,7 +282,10 @@ export default function Dashboard() {
           ) : (
             <div className="rounded-3xl border border-neutral-200/80 bg-white p-12 text-center">
               <p className="text-sm font-semibold text-neutral-500">
-                No activities found for this filter.
+                No activities found within 25 km for this filter.
+              </p>
+              <p className="mt-2 text-xs text-neutral-400">
+                Activities without a mapped meeting location are not included in nearby results.
               </p>
             </div>
           )}

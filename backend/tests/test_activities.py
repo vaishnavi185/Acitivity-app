@@ -54,6 +54,51 @@ def test_activity_create_filter_detail_update_delete(
     assert client.get(f"/activities/{activity_id}").status_code == 404
 
 
+def test_feed_returns_activities_within_radius_ordered_by_distance(
+    client: TestClient,
+    create_user,
+    create_category,
+) -> None:
+    host = create_user()
+    category = create_category()
+    near_payload = activity_payload(category["id"], title="Nearby plan")
+    near_payload.update({"latitude": 12.9716, "longitude": 77.5946})
+    far_payload = activity_payload(category["id"], title="Far plan")
+    far_payload.update({"latitude": 13.4, "longitude": 77.6})
+    nearest_payload = activity_payload(category["id"], title="Nearest plan")
+    nearest_payload.update({"latitude": 12.972, "longitude": 77.5948})
+    unlocated_payload = activity_payload(category["id"], title="Unlocated plan")
+
+    created_ids = []
+    for payload in (near_payload, far_payload, nearest_payload, unlocated_payload):
+        response = client.post("/activities/", headers=host["headers"], json=payload)
+        assert response.status_code == 201, response.text
+        created_ids.append(response.json()["id"])
+
+    response = client.get(
+        "/activities/",
+        params={
+            "near_latitude": 12.9716,
+            "near_longitude": 77.5946,
+            "radius_km": 25,
+        },
+        headers=host["headers"],
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [
+        created_ids[0],
+        created_ids[2],
+    ]
+    assert response.json()[0]["distance_km"] < response.json()[1]["distance_km"]
+    assert all(item["distance_km"] <= 25 for item in response.json())
+
+    incomplete_location = client.get(
+        "/activities/",
+        params={"near_latitude": 12.9716},
+    )
+    assert incomplete_location.status_code == 422
+
+
 def test_feed_filters_activities_posted_by_followed_buddies(
     client: TestClient,
     create_user,

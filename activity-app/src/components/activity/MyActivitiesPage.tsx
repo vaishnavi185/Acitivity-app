@@ -16,6 +16,7 @@ import {
   type ActivityPayload,
 } from '@/service/activityService';
 import { getCurrentUserBookmarks } from '@/service/userService';
+import { searchLocations, type GeocodingResult } from '@/service/geocodingService';
 import { getDashboardActivities } from '@/service/dashboardService';
 import { useAuth } from '@/src/components/auth/AuthProvider';
 import { ActivityDetailModal, type ActivityDetailData } from '@/src/components/activity/ActivityDetailModal';
@@ -108,12 +109,26 @@ export default function MyActivitiesPage() {
   };
 
   const handleSave = async (updatedPlan: EditPlanData) => {
+    let locationResult: GeocodingResult | undefined;
+    try {
+      [locationResult] = await searchLocations(updatedPlan.location.trim());
+    } catch (error) {
+      showApiError(error, 'Unable to locate this activity.');
+      throw error;
+    }
+    if (!locationResult) {
+      const error = new Error('Could not find coordinates for this activity location.');
+      showApiError(error, error.message);
+      throw error;
+    }
     const payload: ActivityPayload = {
       category_id: updatedPlan.categoryId,
       title: updatedPlan.title,
       description: updatedPlan.description,
       cover_image_url: updatedPlan.coverImage || null,
       location: updatedPlan.location,
+      latitude: locationResult.lat,
+      longitude: locationResult.lon,
       activity_date: updatedPlan.date,
       start_time: updatedPlan.startTime,
       end_time: updatedPlan.endTime,

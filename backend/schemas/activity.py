@@ -25,11 +25,19 @@ class ActivityCreate(BaseModel):
     category_id: int
     cover_image_url: str | None = None
     location: str = Field(min_length=2, max_length=255)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     activity_date: date
     start_time: time
     end_time: time
     environment: Literal["indoor", "outdoor"] = "outdoor"
     additional_needed: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def require_location_coordinates_together(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude must be provided together")
+        return self
 
 
 class ActivityUpdate(BaseModel):
@@ -38,6 +46,8 @@ class ActivityUpdate(BaseModel):
     category_id: int | None = None
     cover_image_url: str | None = None
     location: str | None = Field(default=None, min_length=2, max_length=255)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     activity_date: date | None = None
     start_time: time | None = None
     end_time: time | None = None
@@ -50,6 +60,8 @@ class ActivityUpdate(BaseModel):
         for field in self.model_fields_set - nullable_fields:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
+        if ("latitude" in self.model_fields_set) != ("longitude" in self.model_fields_set):
+            raise ValueError("latitude and longitude must be provided together")
         return self
 
 
@@ -63,6 +75,9 @@ class ActivityResponse(BaseModel):
     description: str
     cover_image_url: str | None
     location: str
+    latitude: float | None = None
+    longitude: float | None = None
+    distance_km: float | None = None
     activity_date: date
     start_time: time
     end_time: time

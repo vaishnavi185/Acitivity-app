@@ -30,6 +30,7 @@ export function toActivityPlan(activity: Activity): ActivityPlan {
     category: activity.category,
     environment: activity.environment === "indoor" ? "Indoor" : "Outdoor",
     location: activity.location,
+    distanceKm: activity.distance_km,
     date: formatActivityDate(activity.activity_date),
     time: formatActivityTime(activity.start_time),
     imageUrl: activity.cover_image_url ?? "",

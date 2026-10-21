@@ -16,6 +16,9 @@ export interface Activity {
   description: string;
   cover_image_url: string | null;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance_km?: number | null;
   activity_date: string;
   start_time: string;
   end_time: string;
@@ -43,6 +46,8 @@ export interface ActivityPayload {
   description: string;
   cover_image_url?: string | null;
   location: string;
+  latitude?: number;
+  longitude?: number;
   activity_date: string;
   start_time: string;
   end_time: string;
@@ -57,6 +62,9 @@ export interface ActivityFilters {
   category_id?: number;
   environment?: "indoor" | "outdoor";
   posted_by_buddies?: boolean;
+  near_latitude?: number;
+  near_longitude?: number;
+  radius_km?: number;
   skip?: number;
   limit?: number;
 }

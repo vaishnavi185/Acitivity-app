@@ -11,6 +11,7 @@ export interface ActivityPlan {
   category: string;
   environment: 'Indoor' | 'Outdoor';
   location: string;
+  distanceKm?: number | null;
   date: string;
   time: string;
   imageUrl: string;
@@ -100,7 +101,12 @@ export function ActivityCard({
         <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-neutral-500">
           <div className="flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-orange-500" />
-            <span>{plan.location}</span>
+            <span>
+              {plan.location}
+              {plan.distanceKm !== null && plan.distanceKm !== undefined
+                ? ` · ${plan.distanceKm} km away`
+                : ''}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-orange-500" />

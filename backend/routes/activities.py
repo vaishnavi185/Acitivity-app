@@ -8,6 +8,7 @@ from db.database import get_db
 from config.security import get_current_user, get_optional_current_user
 from models.user import User
 from models.activity import Activity
+from models.activity_location import ActivityLocation
 from models.activity_bookmark import ActivityBookmark
 from models.activity_like import ActivityLike
 from models.activity_participant import ActivityParticipant
@@ -74,6 +75,9 @@ def serialize_activity(
         "description": activity.description,
         "cover_image_url": activity.cover_image_url,
         "location": activity.location,
+        "latitude": getattr(activity, "latitude", None),
+        "longitude": getattr(activity, "longitude", None),
+        "distance_km": getattr(activity, "distance_km", None),
         "activity_date": activity.activity_date,
         "start_time": activity.start_time,
         "end_time": activity.end_time,
@@ -98,6 +102,24 @@ def serialize_activities(
     include_crew: bool = False,
 ):
     counts = get_confirmed_participant_counts(activities, db)
+    coordinates_by_activity = {}
+    if activities:
+        coordinates_by_activity = {
+            location.activity_id: location
+            for location in db.query(ActivityLocation)
+            .filter(
+                ActivityLocation.activity_id.in_(
+                    [activity.id for activity in activities]
+                )
+            )
+            .all()
+        }
+        for activity in activities:
+            location = coordinates_by_activity.get(activity.id)
+            if location is not None:
+                activity.latitude = location.latitude
+                activity.longitude = location.longitude
+
     liked_ids = set()
     bookmarked_ids = set()
     joined_ids = set()
@@ -169,6 +191,9 @@ def list_activities(
     category_id: int | None = Query(default=None),
     environment: str | None = Query(default=None, pattern="^(indoor|outdoor)$"),
     posted_by_buddies: bool = Query(default=False),
+    near_latitude: float | None = Query(default=None, ge=-90, le=90),
+    near_longitude: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float = Query(default=25, gt=0, le=100),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -176,6 +201,11 @@ def list_activities(
 ):
     if posted_by_buddies and current_user is None:
         raise HTTPException(401, "Authentication required")
+    if (near_latitude is None) != (near_longitude is None):
+        raise HTTPException(
+            422,
+            "near_latitude and near_longitude must be provided together",
+        )
 
     activities = get_activities(
         db,
@@ -183,6 +213,9 @@ def list_activities(
         environment=environment,
         search=search,
         buddy_user_id=current_user.id if posted_by_buddies and current_user else None,
+        near_latitude=near_latitude,
+        near_longitude=near_longitude,
+        radius_km=radius_km,
         skip=skip,
         limit=limit,
     )

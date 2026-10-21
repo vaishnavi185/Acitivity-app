@@ -31,6 +31,7 @@ export interface LocationMapSelection extends Coordinates {
 }
 
 interface LocationMapPickerModalProps {
+  title?: string;
   initialSelection: InitialSelection | null;
   onCancel: () => void;
   onConfirm: (selection: LocationMapSelection) => void;
@@ -74,6 +75,7 @@ function MapClickHandler({
 }
 
 export function LocationMapPickerModal({
+  title = "Choose a meeting location",
   initialSelection,
   onCancel,
   onConfirm,
@@ -226,7 +228,7 @@ export function LocationMapPickerModal({
         <header className="flex shrink-0 items-start justify-between border-b border-neutral-100 p-5 sm:p-6">
           <div>
             <h2 id="location-picker-title" className="text-lg font-black text-neutral-900 sm:text-xl">
-              Choose a meeting location
+              {title}
             </h2>
             <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
               Search, use your current location, or click and drag the pin on the map.

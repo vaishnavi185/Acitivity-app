@@ -10,6 +10,8 @@ interface FeedHeaderProps {
   onSelectCategory?: (category: string) => void;
   selectedFilterType?: ActivityFeedFilter;
   onSelectFilterType?: (type: ActivityFeedFilter) => void;
+  locationLabel?: string;
+  radiusKm?: number;
   showingCount?: number;
   totalCount?: number;
   categories?: Category[];
@@ -20,6 +22,8 @@ export function FeedHeader({
   onSelectCategory,
   selectedFilterType = 'all',
   onSelectFilterType,
+  locationLabel,
+  radiusKm = 25,
   showingCount = 1,
   totalCount = 5,
   categories = [],
@@ -66,6 +70,10 @@ export function FeedHeader({
 
       {/* 3. Sub-filter Pills & Count */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <p className="w-full text-xs text-neutral-500">
+          Nearby plans within {radiusKm} km
+          {locationLabel ? ` of ${locationLabel}` : ''}
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           {([
             { type: 'all', label: 'All' },

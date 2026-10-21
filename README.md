@@ -32,6 +32,7 @@ The project consists of a **Next.js frontend**, a **FastAPI backend**, and a **P
 - Create, edit, and delete activities.
 - View activity details.
 - Browse available activities.
+- Discover geocoded activities within 25 km of the selected dashboard location, ordered by distance.
 - Search by keyword.
 - Filter by category and indoor/outdoor environment.
 - Join or leave activities.
@@ -350,9 +351,9 @@ Example category request:
 | POST | `/activities/{activity_id}/like` | Toggle an activity like | Yes |
 | POST | `/activities/{activity_id}/bookmark` | Toggle an activity bookmark | Yes |
 
-The activity listing endpoint supports query parameters for keyword search, category filtering, environment, pagination offset (`skip`), and page size (`limit`).
+The activity listing endpoint supports query parameters for keyword search, category filtering, environment, pagination offset (`skip`), and page size (`limit`). To discover nearby activities, pass `near_latitude`, `near_longitude`, and `radius_km` (defaults to 25 km); results are limited to activities with mapped locations and ordered by distance.
 
-Activity creation includes fields such as `title`, `description`, `category_id`, `location`, `activity_date`, `start_time`, `end_time`, and `additional_needed`. The cover image URL is optional, and the environment defaults to `outdoor`.
+Activity creation includes fields such as `title`, `description`, `category_id`, `location`, `latitude`, `longitude`, `activity_date`, `start_time`, `end_time`, and `additional_needed`. Coordinates are optional for API compatibility but must be supplied together for nearby discovery. The cover image URL is optional, and the environment defaults to `outdoor`.
 
 The backend checks activity ownership for update/delete operations and prevents joining activities that have reached capacity.
 
@@ -492,4 +493,3 @@ You can run Python through the virtual environment directly:
 
 .\.venv\Scripts\python.exe -m pytest -q
 ```
-
