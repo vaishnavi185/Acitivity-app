@@ -12,7 +12,7 @@ test('the root and protected dashboard routes require authentication', async ({ 
   }
 });
 
-test('registration sends exactly the RegisterRequest fields and returns to login', async ({ page }) => {
+test('registration requires a valid phone number and sends all RegisterRequest fields', async ({ page }) => {
   let registrationPayload: Record<string, unknown> | undefined;
   await page.route('**/auth/register', async (route) => {
     registrationPayload = route.request().postDataJSON() as Record<string, unknown>;
@@ -23,6 +23,7 @@ test('registration sends exactly the RegisterRequest fields and returns to login
         id: 'e17c2f58-419d-4bf9-867e-3e3600302428',
         full_name: 'Vaishnavi Test',
         email: 'vaishnavi.assessment@example.com',
+        phone_number: '+919876543210',
         location: null,
       }),
     });
@@ -31,6 +32,8 @@ test('registration sends exactly the RegisterRequest fields and returns to login
   await page.goto('/register');
   await page.locator('input[name="fullName"]').fill('Vaishnavi Test');
   await page.locator('input[name="email"]').fill('vaishnavi.assessment@example.com');
+  await expect(page.locator('input[name="phoneNumber"]')).toHaveAttribute('required', '');
+  await page.locator('input[name="phoneNumber"]').fill('+91 98765 43210');
   await page.locator('input[name="password"]').fill('AssessmentPass123!');
   await page.locator('input[name="confirmPassword"]').fill('AssessmentPass123!');
   await page.getByRole('checkbox').check();
@@ -42,9 +45,9 @@ test('registration sends exactly the RegisterRequest fields and returns to login
   expect(registrationPayload).toEqual({
     full_name: 'Vaishnavi Test',
     email: 'vaishnavi.assessment@example.com',
+    phone_number: '+919876543210',
     password: 'AssessmentPass123!',
   });
-  await expect(page.locator('input[name="phone"]')).toHaveCount(0);
 });
 
 test('failed login displays the backend authentication error', async ({ page }) => {

@@ -92,6 +92,7 @@ def create_user(client: TestClient) -> Callable[..., dict[str, Any]]:
             json={
                 "full_name": full_name,
                 "email": normalized_email,
+                "phone_number": "+91 98765 43210",
                 "password": password,
                 "location": "Test City",
             },

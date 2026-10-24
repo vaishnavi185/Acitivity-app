@@ -57,6 +57,7 @@ export async function authFetch(
 export function registerUser(payload: {
   full_name: string;
   email: string;
+  phone_number: string;
   password: string;
   location?: string | null;
 }) {

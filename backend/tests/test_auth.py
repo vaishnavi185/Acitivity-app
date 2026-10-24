@@ -9,6 +9,7 @@ def test_registration_login_and_profile_update(client: TestClient) -> None:
     registration_payload = {
         "full_name": "Vaishnavi Test",
         "email": email,
+        "phone_number": "+91 98765 43210",
         "password": password,
         "location": "Bengaluru",
     }
@@ -19,8 +20,9 @@ def test_registration_login_and_profile_update(client: TestClient) -> None:
     user = registered.json()
     assert user["full_name"] == registration_payload["full_name"]
     assert user["email"] == email
+    assert user["phone_number"] == "+919876543210"
     assert user["location"] == "Bengaluru"
-    assert set(user) == {"id", "full_name", "email", "location"}
+    assert set(user) == {"id", "full_name", "email", "phone_number", "location"}
 
     duplicate = client.post("/auth/register", json=registration_payload)
     assert duplicate.status_code == 400
@@ -43,6 +45,7 @@ def test_registration_login_and_profile_update(client: TestClient) -> None:
     current_user = client.get("/auth/me", headers=headers)
     assert current_user.status_code == 200
     assert current_user.json()["id"] == user["id"]
+    assert current_user.json()["phone_number"] == user["phone_number"]
 
     updated = client.put(
         "/users/me",
@@ -56,20 +59,41 @@ def test_registration_login_and_profile_update(client: TestClient) -> None:
     read_back = client.get("/users/me", headers=headers)
     assert read_back.status_code == 200
     assert read_back.json()["full_name"] == "Updated Test Member"
+    assert read_back.json()["phone_number"] == user["phone_number"]
     assert read_back.json()["bio"] == "Test profile"
 
 
 def test_registration_schema_and_protected_route_rejections(
     client: TestClient,
 ) -> None:
+    missing_phone = client.post(
+        "/auth/register",
+        json={
+            "full_name": "Test Member",
+            "email": f"{uuid.uuid4().hex}@example.com",
+            "password": "StrongPass123!",
+        },
+    )
+    assert missing_phone.status_code == 422
+
     invalid_payload = {
         "full_name": "A",
         "email": "not-an-email",
         "password": "short",
-        "phone": "555-0100",
     }
     invalid_registration = client.post("/auth/register", json=invalid_payload)
     assert invalid_registration.status_code == 422
+
+    invalid_phone = client.post(
+        "/auth/register",
+        json={
+            "full_name": "Test Member",
+            "email": f"{uuid.uuid4().hex}@example.com",
+            "phone_number": "123",
+            "password": "StrongPass123!",
+        },
+    )
+    assert invalid_phone.status_code == 422
 
     missing_auth = client.get("/users/me")
     assert missing_auth.status_code == 401

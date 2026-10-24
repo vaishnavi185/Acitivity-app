@@ -6,6 +6,7 @@ export interface UserProfile {
   id: string;
   full_name: string;
   email: string;
+  phone_number: string | null;
   location: string | null;
   avatar_url: string | null;
   bio: string | null;
@@ -13,6 +14,7 @@ export interface UserProfile {
 
 export interface UserProfileUpdate {
   full_name?: string;
+  phone_number?: string;
   location?: string | null;
   avatar_url?: string | null;
   bio?: string | null;

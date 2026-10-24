@@ -23,6 +23,7 @@ export default function RegisterScreen({
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
     loginEmail: '',
@@ -49,6 +50,11 @@ export default function RegisterScreen({
       notify('Please enter a valid email address', 'error');
       return;
     }
+    const phoneNumber = formData.phoneNumber.trim().replace(/[\s()-]/g, '');
+    if (!/^\+?[1-9]\d{6,14}$/.test(phoneNumber)) {
+      notify('Enter a valid phone number with 7 to 15 digits.', 'error');
+      return;
+    }
     const passwordLength = Array.from(formData.password).length;
     if (passwordLength < 8 || passwordLength > 72) {
       notify('Password must be between 8 and 72 characters.', 'error');
@@ -72,6 +78,7 @@ export default function RegisterScreen({
       await registerUser({
         full_name: formData.fullName,
         email: formData.email.trim(),
+        phone_number: phoneNumber,
         password: formData.password,
       });
       notify(

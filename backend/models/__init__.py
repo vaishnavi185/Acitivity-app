@@ -1,5 +1,6 @@
 
 from models.user import User
+from models.email_otp import EmailOtp
 from models.category import Category
 from models.activity import Activity
 from models.activity_location import ActivityLocation

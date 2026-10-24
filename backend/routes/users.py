@@ -29,6 +29,7 @@ def serialize_user(user: User) -> dict:
         "id": str(user.id),
         "full_name": user.full_name,
         "email": user.email,
+        "phone_number": user.phone_number,
         "location": user.location,
         "avatar_url": user.avatar_url,
         "bio": user.bio,

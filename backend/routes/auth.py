@@ -30,6 +30,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
             id=str(user.id),
             full_name=user.full_name,
             email=user.email,
+            phone_number=user.phone_number,
             location=user.location,
         )
 
@@ -59,6 +60,7 @@ def get_me(
         "id": str(current_user.id),
         "full_name": current_user.full_name,
         "email": current_user.email,
+        "phone_number": current_user.phone_number,
         "location": current_user.location,
         "avatar_url": current_user.avatar_url,
         "bio": current_user.bio,
@@ -88,6 +90,7 @@ def update_profile(
             "id": str(current_user.id),
             "full_name": current_user.full_name,
             "email": current_user.email,
+            "phone_number": current_user.phone_number,
             "location": current_user.location,
             "avatar_url": current_user.avatar_url,
             "bio": current_user.bio,

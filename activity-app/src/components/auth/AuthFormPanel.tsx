@@ -1,12 +1,13 @@
 "use client";
 
 import React from 'react';
-import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { AuthInput } from './AuthFormFields';
 
 interface FormDataState {
   fullName: string;
   email: string;
+  phoneNumber: string;
   password: string;
   confirmPassword: string;
   loginEmail: string;
@@ -114,6 +115,25 @@ export function AuthFormPanel({
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <AuthInput
+              label="Phone Number"
+              icon={<Phone className="w-4 h-4" />}
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleInputChange}
+              placeholder="e.g. +91 98765 43210"
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={32}
+              required
+            />
+            <p className="mt-1.5 text-xs text-neutral-500">
+              Enter 7 to 15 digits, optionally with a country code.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

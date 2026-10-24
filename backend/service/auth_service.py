@@ -26,6 +26,7 @@ def register_user(data: RegisterRequest, db: Session):
     user = User(
         full_name=data.full_name,
         email=str(data.email).lower(),
+        phone_number=data.phone_number,
         hashed_password=hash_password(data.password),
         location=data.location,
     )

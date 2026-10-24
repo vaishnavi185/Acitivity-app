@@ -1,7 +1,7 @@
 
 import uuid
 
-from sqlalchemy import Column, String, Text, Boolean, DateTime, func
+from sqlalchemy import Boolean, Column, DateTime, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -20,7 +20,8 @@ class User(Base):
     full_name = Column(String(120), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-
+    phone_number = Column(String(16), nullable=True)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     location = Column(String(120), nullable=True)
     avatar_url = Column(Text, nullable=True)
     bio = Column(Text, nullable=True)
@@ -56,4 +57,13 @@ class User(Base):
         foreign_keys="Buddy.following_id",
         back_populates="following",
         cascade="all, delete-orphan",
+    )
+    __table_args__ = (
+        Index(
+            "uq_users_phone_number_verified",
+            "phone_number",
+            unique=True,
+            postgresql_where=text("email_verified_at IS NOT NULL"),
+            sqlite_where=text("email_verified_at IS NOT NULL"),
+        ),
     )
