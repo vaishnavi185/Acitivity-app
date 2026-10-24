@@ -14,6 +14,7 @@ import {
   leaveActivity,
   type Activity,
 } from '@/service/activityService';
+import { uploadCurrentUserAvatar } from '@/service/userService';
 import { useAuth } from '@/src/components/auth/AuthProvider';
 import { ActivityCard } from '@/src/components/activity/ActivityCard';
 import { toActivityPlan } from '@/src/components/activity/activityMappers';
@@ -44,6 +45,7 @@ export function PublicProfilePage() {
     error?: string;
   } | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const activityRequestKey = `${userId}:${tab}:${offset}`;
   const profile = profileResult?.userId === userId
     ? profileResult.profile ?? null
@@ -144,6 +146,27 @@ export function PublicProfilePage() {
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    setIsAvatarUploading(true);
+    try {
+      const updatedProfile = await uploadCurrentUserAvatar(file);
+      setProfileResult((current) => (
+        current?.userId === userId && current.profile
+          ? {
+            ...current,
+            profile: { ...current.profile, avatar_url: updatedProfile.avatar_url },
+          }
+          : current
+      ));
+      notify('Profile photo updated successfully.', 'success');
+      window.dispatchEvent(new Event('app:profile-refresh'));
+    } catch (error) {
+      showApiError(error, 'Unable to upload your profile photo.');
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  };
+
   if (isLoadingProfile) {
     return (
       <p className="rounded-3xl border border-neutral-200/80 bg-white p-10 text-sm text-neutral-500" role="status">
@@ -180,6 +203,8 @@ export function PublicProfilePage() {
         isOwnProfile={ownProfile}
         showEditButton={ownProfile}
         showAvatarUpload={ownProfile}
+        isAvatarUploading={isAvatarUploading}
+        onAvatarUpload={handleAvatarUpload}
         showEmail={false}
         onEditProfile={() => router.push('/dashboard/profile')}
         onBuddyChange={(isBuddy) => {

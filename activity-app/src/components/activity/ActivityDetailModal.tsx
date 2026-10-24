@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Toast } from '../auth/AuthToast';
 import { ApiError } from '@/service/AuthService';
+import { resolveMediaUrl } from '@/service/mediaService';
 
 
 export interface CrewMember {
@@ -265,7 +266,7 @@ export function ActivityDetailModal({
                 <div className="flex items-center gap-3">
                   {activity.host.avatarUrl.trim() ? (
                     <img
-                      src={activity.host.avatarUrl.trim() || undefined}
+                      src={resolveMediaUrl(activity.host.avatarUrl.trim())}
                       alt={activity.host.name}
                       className="w-11 h-11 rounded-full object-cover border-2 border-orange-400/30"
                     />
@@ -309,7 +310,7 @@ export function ActivityDetailModal({
                     >
                       {member.avatarUrl.trim() ? (
                         <img
-                          src={member.avatarUrl.trim() || undefined}
+                          src={resolveMediaUrl(member.avatarUrl.trim())}
                           alt={member.name}
                           className="w-9 h-9 rounded-full object-cover flex-shrink-0"
                         />

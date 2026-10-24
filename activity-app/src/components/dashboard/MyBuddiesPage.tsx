@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, MapPin, MoreVertical, Search, Trash2, UsersRound } from "lucide-react";
 import { ApiError } from "@/service/AuthService";
+import { resolveMediaUrl } from "@/service/mediaService";
 import {
   getMyBuddies,
   removeBuddy,
@@ -187,7 +188,7 @@ export default function MyBuddiesPage() {
                   >
                     {user.avatar_url ? (
                       <Image
-                        src={user.avatar_url}
+                        src={resolveMediaUrl(user.avatar_url) ?? user.avatar_url}
                         alt=""
                         width={48}
                         height={48}

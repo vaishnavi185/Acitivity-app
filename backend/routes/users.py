@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,11 @@ from schemas.buddy import (
     BuddyUserOut,
 )
 from schemas.user import UserProfileResponse, UserProfileUpdate
+from service.avatar_service import (
+    MAX_AVATAR_SIZE,
+    remove_avatar,
+    save_avatar,
+)
 from service.activity_social_service import get_user_bookmarked_activities
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -40,6 +45,35 @@ def serialize_user(user: User) -> dict:
 def get_current_user_profile(
     current_user: User = Depends(get_current_user),
 ):
+    return serialize_user(current_user)
+
+
+@router.post("/me/avatar", response_model=UserProfileResponse)
+async def upload_current_user_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        content = await file.read(MAX_AVATAR_SIZE + 1)
+    finally:
+        await file.close()
+
+    new_avatar_url = save_avatar(content, file.content_type)
+    previous_avatar_url = current_user.avatar_url
+    current_user.avatar_url = new_avatar_url
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        remove_avatar(new_avatar_url)
+        raise
+
+    db.refresh(current_user)
+    if previous_avatar_url != new_avatar_url:
+        remove_avatar(previous_avatar_url)
+
     return serialize_user(current_user)
 
 

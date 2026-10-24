@@ -35,6 +35,15 @@ export function updateCurrentUserProfile(
   });
 }
 
+export function uploadCurrentUserAvatar(file: File): Promise<UserProfile> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return authFetch("/users/me/avatar", {
+    method: "POST",
+    body: formData,
+  });
+}
+
 // Get current user's bookmarked activities
 export function getCurrentUserBookmarks(): Promise<Activity[]> {
   return authFetch("/users/me/bookmarks");

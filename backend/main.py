@@ -4,9 +4,11 @@ import logging
 from fastapi import FastAPI
 from fastapi import HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from db.database import Base, engine
+from service.avatar_service import AVATAR_DIR
 from models import (
     User,
     Category,
@@ -27,6 +29,12 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
+)
+
+app.mount(
+    "/uploads/avatars",
+    StaticFiles(directory=str(AVATAR_DIR), check_dir=False),
+    name="avatar_file",
 )
 
 # Create database tables

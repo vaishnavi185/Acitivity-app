@@ -3,6 +3,7 @@
 import React from 'react';
 import { MapPin, Users, Calendar, Clock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { resolveMediaUrl } from '@/service/mediaService';
 
 export interface ActivityPlan {
   id: string;
@@ -67,7 +68,7 @@ export function ActivityCard({
           <div className="flex items-center gap-2">
             {plan.hostAvatar ? (
               <img
-                src={plan.hostAvatar}
+                src={resolveMediaUrl(plan.hostAvatar)}
                 alt={plan.hostName}
                 className="w-7 h-7 rounded-full border-2 border-white object-cover"
               />

@@ -8,6 +8,7 @@ import {
   PlusCircle,
   LogOut,
 } from 'lucide-react';
+import { resolveMediaUrl } from '@/service/mediaService';
 
 interface HeaderProps {
   currentLocation?: string;
@@ -108,7 +109,7 @@ export function Header({
           >
             {userAvatar ? (
               <img
-                src={userAvatar}
+                src={resolveMediaUrl(userAvatar)}
                 alt={userName}
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-orange-400/40"
               />

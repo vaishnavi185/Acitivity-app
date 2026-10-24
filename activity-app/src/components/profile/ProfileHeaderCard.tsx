@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, MapPin, UserCheck, UserPlus } from 'lucide-react';
 
 import Swal from 'sweetalert2';
@@ -11,6 +11,7 @@ import {
   removeBuddy,
 } from '@/service/buddyService';
 import { useAuth } from '../auth/AuthProvider';
+import { resolveMediaUrl } from '@/service/mediaService';
 
 interface ProfileHeaderCardProps {
   name?: string;
@@ -19,7 +20,8 @@ interface ProfileHeaderCardProps {
   avatarUrl?: string;
   bio?: string;
   onEditProfile?: () => void;
-  onAvatarUpload?: () => void;
+  onAvatarUpload?: (file: File) => void | Promise<void>;
+  isAvatarUploading?: boolean;
   userId?: string;
   isOwnProfile?: boolean;
   onBuddyChange?: (isBuddy: boolean) => void;
@@ -36,6 +38,7 @@ export function ProfileHeaderCard({
   bio = 'Product designer & weekend trail runner. Always up for badminton, filter coffee, or strategy board games!',
   onEditProfile,
   onAvatarUpload,
+  isAvatarUploading = false,
   userId,
   isOwnProfile = false,
   onBuddyChange,
@@ -44,6 +47,7 @@ export function ProfileHeaderCard({
   showEmail = true,
 }: ProfileHeaderCardProps) {
   const { notify } = useAuth();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [buddyStatus, setBuddyStatus] = useState<{
     userId: string;
     isBuddy: boolean;
@@ -135,7 +139,7 @@ export function ProfileHeaderCard({
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-sm">
               {avatarUrl ? (
                 <img
-                  src={avatarUrl}
+                  src={resolveMediaUrl(avatarUrl)}
                   alt={name}
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -146,14 +150,32 @@ export function ProfileHeaderCard({
               )}
             </div>
             {showAvatarUpload && (
-              <button
-                type="button"
-                onClick={onAvatarUpload}
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-neutral-900 border-2 border-white flex items-center justify-center text-white hover:bg-neutral-800 transition-colors shadow-sm cursor-pointer"
-                title="Change photo"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </button>
+              <>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  aria-label="Choose profile photo"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void onAvatarUpload?.(file);
+                    event.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isAvatarUploading}
+                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-neutral-900 border-2 border-white flex items-center justify-center text-white hover:bg-neutral-800 transition-colors shadow-sm cursor-pointer disabled:cursor-wait disabled:opacity-70"
+                  title="Change photo"
+                  aria-label="Change profile photo"
+                >
+                  {isAvatarUploading
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Camera className="w-3.5 h-3.5" />}
+                </button>
+              </>
             )}
           </div>
 

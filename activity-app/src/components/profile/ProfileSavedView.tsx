@@ -15,6 +15,7 @@ import {
 import {
   getCurrentUserBookmarks,
   getCurrentUserProfile,
+  uploadCurrentUserAvatar,
   updateCurrentUserProfile,
   type UserProfile,
 } from '@/service/userService';
@@ -43,6 +44,7 @@ export function ProfileSavedView() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [selectedActivity, setSelectedActivity] = useState<ActivityDetailData | null>(null);
 
@@ -112,6 +114,20 @@ export function ProfileSavedView() {
       confirmButtonText: 'Continue',
     });
     if (confirmed) setIsEditingProfile(true);
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    setIsAvatarUploading(true);
+    try {
+      const updatedProfile = await uploadCurrentUserAvatar(file);
+      setProfile(updatedProfile);
+      notify('Profile photo updated successfully.', 'success');
+      window.dispatchEvent(new Event('app:profile-refresh'));
+    } catch (error) {
+      showApiError(error, 'Unable to upload your profile photo.');
+    } finally {
+      setIsAvatarUploading(false);
+    }
   };
 
   const handleBookmarkToggle = async (activityId: string) => {
@@ -209,9 +225,12 @@ export function ProfileSavedView() {
           name={profileFormData.fullName}
           location={profileFormData.location}
           email={profileFormData.email}
+          avatarUrl={profile.avatar_url ?? ''}
           bio={profileFormData.bio}
           userId={profile.id}
           isOwnProfile
+          isAvatarUploading={isAvatarUploading}
+          onAvatarUpload={handleAvatarUpload}
           onEditProfile={() => void handleEditProfile()}
         />
 

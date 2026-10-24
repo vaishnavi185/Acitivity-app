@@ -13,14 +13,9 @@ def _validate_bcrypt_password_bytes(password: str) -> str:
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    phone_number: str = Field(min_length=7, max_length=32)
+    phone_number: str = Field(min_length=10, max_length=16)
     password: str = Field(min_length=8, max_length=72)
     location: str | None = Field(default=None, max_length=120)
-
-    @field_validator("phone_number")
-    @classmethod
-    def validate_phone_number(cls, phone_number: str) -> str:
-        return normalize_phone_number(phone_number)
 
     @field_validator("password")
     @classmethod

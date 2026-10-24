@@ -21,3 +21,6 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+
+# Uploaded profile images
+uploads/
