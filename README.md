@@ -8,17 +8,7 @@ The project consists of a **Next.js frontend**, a **FastAPI backend**, and a **P
 
 - [Features](#features)
 - [Technology Stack](#technology-stack)
-- [Project Architecture](#project-architecture)
-- [Prerequisites](#prerequisites)
-- [Environment Configuration](#environment-configuration)
-- [Database Setup](#database-setup)
-- [Installation and Running Locally](#installation-and-running-locally)
-- [API Documentation](#api-documentation)
-- [Testing](#testing)
-- [Security and Validation](#security-and-validation)
-- [Known Limitations](#known-limitations)
-- [Troubleshooting](#troubleshooting)
-- [Assessment Submission Checklist](#assessment-submission-checklist)
+
 
 ## Features
 
